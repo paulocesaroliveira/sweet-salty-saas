@@ -257,7 +257,10 @@ const Products = () => {
                   id="image"
                   type="file"
                   accept="image/*"
-                  onChange={(e) => setImageFile(e.files?.[0] || null)}
+                  onChange={(e) => {
+                    const file = e.target.files?.[0] || null;
+                    setImageFile(file);
+                  }}
                   className="input-field"
                 />
               </div>
