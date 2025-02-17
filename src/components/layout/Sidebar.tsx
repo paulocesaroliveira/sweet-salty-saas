@@ -8,7 +8,8 @@ import {
   Calendar, 
   Settings,
   Menu,
-  X
+  X,
+  Cookie
 } from "lucide-react";
 
 const Sidebar = () => {
@@ -17,6 +18,7 @@ const Sidebar = () => {
   const menuItems = [
     { icon: Home, label: "Dashboard", path: "/dashboard" },
     { icon: Package, label: "Produtos", path: "/products" },
+    { icon: Cookie, label: "Ingredientes", path: "/ingredients" },
     { icon: ShoppingCart, label: "Pedidos", path: "/orders" },
     { icon: Calendar, label: "Agenda", path: "/calendar" },
     { icon: Settings, label: "Configurações", path: "/settings" },
