@@ -9,6 +9,50 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      ingredients: {
+        Row: {
+          cost_per_unit: number
+          created_at: string
+          id: string
+          name: string
+          package_amount: number
+          package_cost: number
+          unit: string
+          updated_at: string
+          vendor_id: string
+        }
+        Insert: {
+          cost_per_unit: number
+          created_at?: string
+          id?: string
+          name: string
+          package_amount: number
+          package_cost: number
+          unit: string
+          updated_at?: string
+          vendor_id: string
+        }
+        Update: {
+          cost_per_unit?: number
+          created_at?: string
+          id?: string
+          name?: string
+          package_amount?: number
+          package_cost?: number
+          unit?: string
+          updated_at?: string
+          vendor_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ingredients_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       order_items: {
         Row: {
           created_at: string
@@ -168,6 +212,83 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      recipe_ingredients: {
+        Row: {
+          amount: number
+          created_at: string
+          id: string
+          ingredient_cost: number
+          ingredient_id: string
+          recipe_id: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          id?: string
+          ingredient_cost: number
+          ingredient_id: string
+          recipe_id: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          id?: string
+          ingredient_cost?: number
+          ingredient_id?: string
+          recipe_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "recipe_ingredients_ingredient_id_fkey"
+            columns: ["ingredient_id"]
+            isOneToOne: false
+            referencedRelation: "ingredients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "recipe_ingredients_recipe_id_fkey"
+            columns: ["recipe_id"]
+            isOneToOne: false
+            referencedRelation: "recipes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      recipes: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          total_cost: number
+          updated_at: string
+          vendor_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+          total_cost: number
+          updated_at?: string
+          vendor_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          total_cost?: number
+          updated_at?: string
+          vendor_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "recipes_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {
