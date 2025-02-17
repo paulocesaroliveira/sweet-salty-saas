@@ -1,312 +1,129 @@
 
 import { useState } from "react";
-import { Plus, Pencil, Trash2, Loader2 } from "lucide-react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
+import { PlusCircle, Pencil, Trash2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { useAuth } from "@/contexts/AuthContext";
+import { Button } from "@/components/ui/button";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { toast } from "sonner";
 
-interface Ingredient {
+type Ingredient = {
   id: string;
   name: string;
-  unit: 'g' | 'ml';
+  unit: string;
   package_cost: number;
   package_amount: number;
   cost_per_unit: number;
-}
+  created_at: string;
+};
 
 const Ingredients = () => {
-  const { user } = useAuth();
-  const queryClient = useQueryClient();
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [editingIngredient, setEditingIngredient] = useState<Ingredient | null>(null);
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
 
-  // Form state
-  const [name, setName] = useState("");
-  const [unit, setUnit] = useState<'g' | 'ml'>('g');
-  const [packageCost, setPackageCost] = useState("");
-  const [packageAmount, setPackageAmount] = useState("");
-
-  const { data: ingredients, isLoading } = useQuery({
-    queryKey: ['ingredients'],
+  const { data: ingredients, refetch } = useQuery({
+    queryKey: ["ingredients"],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('ingredients')
-        .select('*')
-        .eq('vendor_id', user?.id)
-        .order('name');
+        .from("ingredients")
+        .select("*")
+        .order("name");
 
-      if (error) throw error;
-      return data as Ingredient[];
-    }
-  });
-
-  const calculateCostPerUnit = (cost: number, amount: number) => {
-    return cost / amount;
-  };
-
-  const resetForm = () => {
-    setName("");
-    setUnit('g');
-    setPackageCost("");
-    setPackageAmount("");
-    setEditingIngredient(null);
-    setIsModalOpen(false);
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsSubmitting(true);
-
-    const costPerUnit = calculateCostPerUnit(
-      Number(packageCost),
-      Number(packageAmount)
-    );
-
-    try {
-      if (editingIngredient) {
-        const { error } = await supabase
-          .from('ingredients')
-          .update({
-            name,
-            unit,
-            package_cost: Number(packageCost),
-            package_amount: Number(packageAmount),
-            cost_per_unit: costPerUnit
-          })
-          .eq('id', editingIngredient.id);
-
-        if (error) throw error;
-        toast.success("Ingrediente atualizado com sucesso!");
-      } else {
-        const { error } = await supabase
-          .from('ingredients')
-          .insert({
-            name,
-            unit,
-            package_cost: Number(packageCost),
-            package_amount: Number(packageAmount),
-            cost_per_unit: costPerUnit,
-            vendor_id: user?.id
-          });
-
-        if (error) throw error;
-        toast.success("Ingrediente criado com sucesso!");
+      if (error) {
+        toast.error("Erro ao carregar ingredientes");
+        throw error;
       }
 
-      queryClient.invalidateQueries({ queryKey: ['ingredients'] });
-      resetForm();
-    } catch (error: any) {
-      toast.error(error.message);
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
+      return data as Ingredient[];
+    },
+  });
 
   const handleDelete = async (id: string) => {
     if (!confirm("Tem certeza que deseja excluir este ingrediente?")) return;
 
+    setIsLoading(true);
     try {
       const { error } = await supabase
-        .from('ingredients')
+        .from("ingredients")
         .delete()
-        .eq('id', id);
+        .eq("id", id);
 
       if (error) throw error;
 
-      toast.success("Ingrediente excluído com sucesso!");
-      queryClient.invalidateQueries({ queryKey: ['ingredients'] });
-    } catch (error: any) {
-      toast.error(error.message);
+      toast.success("Ingrediente excluído com sucesso");
+      refetch();
+    } catch (error) {
+      toast.error("Erro ao excluir ingrediente");
+      console.error(error);
+    } finally {
+      setIsLoading(false);
     }
   };
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-display mb-1">Ingredientes</h1>
-          <p className="text-neutral-600">Gerencie seus ingredientes e custos</p>
-        </div>
-        <button 
-          className="btn-primary flex items-center space-x-2"
-          onClick={() => setIsModalOpen(true)}
-        >
-          <Plus size={20} />
-          <span>Novo Ingrediente</span>
-        </button>
+      <div className="flex justify-between items-center">
+        <h1 className="text-2xl font-semibold tracking-tight">Ingredientes</h1>
+        <Button className="gap-2">
+          <PlusCircle size={20} />
+          Novo Ingrediente
+        </Button>
       </div>
 
-      {isLoading ? (
-        <div className="flex items-center justify-center py-12">
-          <Loader2 className="animate-spin" size={24} />
-        </div>
-      ) : (
-        <div className="bg-white rounded-lg shadow-sm">
-          <table className="w-full">
-            <thead>
-              <tr className="border-b">
-                <th className="text-left p-4">Nome</th>
-                <th className="text-left p-4">Unidade</th>
-                <th className="text-right p-4">Custo da Embalagem</th>
-                <th className="text-right p-4">Quantidade na Embalagem</th>
-                <th className="text-right p-4">Custo por Unidade</th>
-                <th className="p-4 w-24">Ações</th>
-              </tr>
-            </thead>
-            <tbody>
-              {ingredients?.map((ingredient) => (
-                <tr key={ingredient.id} className="border-b">
-                  <td className="p-4">{ingredient.name}</td>
-                  <td className="p-4">{ingredient.unit}</td>
-                  <td className="p-4 text-right">
-                    {new Intl.NumberFormat('pt-BR', {
-                      style: 'currency',
-                      currency: 'BRL'
-                    }).format(ingredient.package_cost)}
-                  </td>
-                  <td className="p-4 text-right">
-                    {ingredient.package_amount} {ingredient.unit}
-                  </td>
-                  <td className="p-4 text-right">
-                    {new Intl.NumberFormat('pt-BR', {
-                      style: 'currency',
-                      currency: 'BRL'
-                    }).format(ingredient.cost_per_unit)}
-                    /{ingredient.unit}
-                  </td>
-                  <td className="p-4">
-                    <div className="flex items-center justify-end space-x-2">
-                      <button
-                        onClick={() => {
-                          setEditingIngredient(ingredient);
-                          setName(ingredient.name);
-                          setUnit(ingredient.unit);
-                          setPackageCost(ingredient.package_cost.toString());
-                          setPackageAmount(ingredient.package_amount.toString());
-                          setIsModalOpen(true);
-                        }}
-                        className="p-2 hover:bg-neutral-100 rounded-full transition-colors"
-                      >
-                        <Pencil size={16} />
-                      </button>
-                      <button
-                        onClick={() => handleDelete(ingredient.id)}
-                        className="p-2 hover:bg-neutral-100 rounded-full transition-colors text-red-500"
-                      >
-                        <Trash2 size={16} />
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
-
-      {/* Modal de Ingrediente */}
-      {isModalOpen && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-lg w-full max-w-md p-6">
-            <h2 className="text-xl font-medium mb-4">
-              {editingIngredient ? "Editar Ingrediente" : "Novo Ingrediente"}
-            </h2>
-            
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div>
-                <label htmlFor="name" className="label">Nome</label>
-                <input
-                  id="name"
-                  type="text"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  className="input-field"
-                  required
-                />
-              </div>
-
-              <div>
-                <label htmlFor="unit" className="label">Unidade</label>
-                <select
-                  id="unit"
-                  value={unit}
-                  onChange={(e) => setUnit(e.target.value as 'g' | 'ml')}
-                  className="input-field"
-                  required
-                >
-                  <option value="g">Gramas (g)</option>
-                  <option value="ml">Mililitros (ml)</option>
-                </select>
-              </div>
-
-              <div>
-                <label htmlFor="packageCost" className="label">Custo da Embalagem</label>
-                <input
-                  id="packageCost"
-                  type="number"
-                  step="0.01"
-                  value={packageCost}
-                  onChange={(e) => setPackageCost(e.target.value)}
-                  className="input-field"
-                  required
-                />
-              </div>
-
-              <div>
-                <label htmlFor="packageAmount" className="label">
-                  Quantidade na Embalagem ({unit})
-                </label>
-                <input
-                  id="packageAmount"
-                  type="number"
-                  step="0.01"
-                  value={packageAmount}
-                  onChange={(e) => setPackageAmount(e.target.value)}
-                  className="input-field"
-                  required
-                />
-              </div>
-
-              {packageCost && packageAmount && (
-                <div className="p-4 bg-neutral-50 rounded-lg">
-                  <p className="text-sm text-neutral-600">
-                    Custo por {unit}:{" "}
-                    <span className="font-medium">
-                      {new Intl.NumberFormat('pt-BR', {
-                        style: 'currency',
-                        currency: 'BRL'
-                      }).format(calculateCostPerUnit(Number(packageCost), Number(packageAmount)))}
-                    </span>
-                  </p>
-                </div>
-              )}
-
-              <div className="flex items-center space-x-2 pt-4">
-                <button
-                  type="button"
-                  onClick={resetForm}
-                  className="px-4 py-2 text-neutral-600 hover:bg-neutral-100 rounded-lg transition-colors"
-                >
-                  Cancelar
-                </button>
-                <button
-                  type="submit"
-                  disabled={isSubmitting}
-                  className="btn-primary flex-1 flex items-center justify-center"
-                >
-                  {isSubmitting ? (
-                    <Loader2 className="animate-spin" size={20} />
-                  ) : (
-                    "Salvar"
-                  )}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+      <div className="border rounded-lg">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Nome</TableHead>
+              <TableHead>Unidade</TableHead>
+              <TableHead>Custo do Pacote</TableHead>
+              <TableHead>Quantidade no Pacote</TableHead>
+              <TableHead>Custo por Unidade</TableHead>
+              <TableHead className="w-[100px]">Ações</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {ingredients?.map((ingredient) => (
+              <TableRow key={ingredient.id}>
+                <TableCell>{ingredient.name}</TableCell>
+                <TableCell>{ingredient.unit}</TableCell>
+                <TableCell>R$ {ingredient.package_cost.toFixed(2)}</TableCell>
+                <TableCell>
+                  {ingredient.package_amount} {ingredient.unit}
+                </TableCell>
+                <TableCell>R$ {ingredient.cost_per_unit.toFixed(2)}</TableCell>
+                <TableCell className="space-x-2">
+                  <Button variant="ghost" size="icon" className="h-8 w-8">
+                    <Pencil size={16} />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8 text-red-500 hover:text-red-600"
+                    onClick={() => handleDelete(ingredient.id)}
+                    disabled={isLoading}
+                  >
+                    <Trash2 size={16} />
+                  </Button>
+                </TableCell>
+              </TableRow>
+            ))}
+            {(!ingredients || ingredients.length === 0) && (
+              <TableRow>
+                <TableCell colSpan={6} className="text-center py-8 text-neutral-500">
+                  Nenhum ingrediente cadastrado
+                </TableCell>
+              </TableRow>
+            )}
+          </TableBody>
+        </Table>
+      </div>
     </div>
   );
 };
