@@ -96,9 +96,15 @@ const Recipes = () => {
                   >
                     <Eye size={16} />
                   </Button>
-                  <Button variant="ghost" size="icon" className="h-8 w-8">
-                    <Pencil size={16} />
-                  </Button>
+                  <RecipeDialog
+                    recipeId={recipe.id}
+                    onSave={refetch}
+                    trigger={
+                      <Button variant="ghost" size="icon" className="h-8 w-8">
+                        <Pencil size={16} />
+                      </Button>
+                    }
+                  />
                   <Button
                     variant="ghost"
                     size="icon"

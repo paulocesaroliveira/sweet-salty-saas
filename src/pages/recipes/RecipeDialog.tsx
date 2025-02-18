@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { PlusCircle, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -17,6 +17,8 @@ import { toast } from "sonner";
 import { useQuery } from "@tanstack/react-query";
 
 type RecipeDialogProps = {
+  recipeId?: string;
+  trigger?: React.ReactNode;
   onSave: () => void;
 };
 
@@ -33,7 +35,7 @@ type RecipeIngredient = {
   cost: number;
 };
 
-export function RecipeDialog({ onSave }: RecipeDialogProps) {
+export function RecipeDialog({ recipeId, trigger, onSave }: RecipeDialogProps) {
   const [open, setOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const { user } = useAuth();
@@ -59,6 +61,59 @@ export function RecipeDialog({ onSave }: RecipeDialogProps) {
       return data as Ingredient[];
     },
   });
+
+  const { data: recipeDetails } = useQuery({
+    queryKey: ["recipe-edit", recipeId],
+    queryFn: async () => {
+      if (!recipeId) return null;
+
+      const { data, error } = await supabase
+        .from("recipe_ingredients")
+        .select(`
+          amount,
+          ingredient_cost,
+          recipes (
+            id,
+            name,
+            total_cost
+          ),
+          ingredients (
+            id,
+            name,
+            unit,
+            cost_per_unit
+          )
+        `)
+        .eq("recipe_id", recipeId);
+
+      if (error) {
+        toast.error("Erro ao carregar detalhes da receita");
+        throw error;
+      }
+
+      return data;
+    },
+    enabled: !!recipeId,
+  });
+
+  useEffect(() => {
+    if (recipeDetails && recipeDetails.length > 0) {
+      setName(recipeDetails[0].recipes.name);
+      
+      const ingredients = recipeDetails.map((detail) => ({
+        ingredient: {
+          id: detail.ingredients.id,
+          name: detail.ingredients.name,
+          unit: detail.ingredients.unit,
+          cost_per_unit: detail.ingredients.cost_per_unit,
+        },
+        amount: detail.amount,
+        cost: detail.ingredient_cost,
+      }));
+
+      setSelectedIngredients(ingredients);
+    }
+  }, [recipeDetails]);
 
   const addIngredient = () => {
     if (!selectedIngredientId || !amount) {
@@ -106,37 +161,76 @@ export function RecipeDialog({ onSave }: RecipeDialogProps) {
     try {
       const totalCost = calculateTotalCost();
 
-      const { data: recipe, error: recipeError } = await supabase
-        .from("recipes")
-        .insert({
-          name,
-          total_cost: totalCost,
-          vendor_id: user?.id,
-        })
-        .select()
-        .single();
+      if (recipeId) {
+        // Atualização
+        const { error: recipeError } = await supabase
+          .from("recipes")
+          .update({
+            name,
+            total_cost: totalCost,
+          })
+          .eq("id", recipeId);
 
-      if (recipeError) throw recipeError;
+        if (recipeError) throw recipeError;
 
-      const recipeIngredients = selectedIngredients.map((item) => ({
-        recipe_id: recipe.id,
-        ingredient_id: item.ingredient.id,
-        amount: item.amount,
-        ingredient_cost: item.cost,
-      }));
+        // Remove ingredientes antigos
+        const { error: deleteError } = await supabase
+          .from("recipe_ingredients")
+          .delete()
+          .eq("recipe_id", recipeId);
 
-      const { error: ingredientsError } = await supabase
-        .from("recipe_ingredients")
-        .insert(recipeIngredients);
+        if (deleteError) throw deleteError;
 
-      if (ingredientsError) throw ingredientsError;
+        // Adiciona novos ingredientes
+        const recipeIngredients = selectedIngredients.map((item) => ({
+          recipe_id: recipeId,
+          ingredient_id: item.ingredient.id,
+          amount: item.amount,
+          ingredient_cost: item.cost,
+        }));
 
-      toast.success("Receita adicionada com sucesso");
+        const { error: ingredientsError } = await supabase
+          .from("recipe_ingredients")
+          .insert(recipeIngredients);
+
+        if (ingredientsError) throw ingredientsError;
+
+        toast.success("Receita atualizada com sucesso");
+      } else {
+        // Criação
+        const { data: recipe, error: recipeError } = await supabase
+          .from("recipes")
+          .insert({
+            name,
+            total_cost: totalCost,
+            vendor_id: user?.id,
+          })
+          .select()
+          .single();
+
+        if (recipeError) throw recipeError;
+
+        const recipeIngredients = selectedIngredients.map((item) => ({
+          recipe_id: recipe.id,
+          ingredient_id: item.ingredient.id,
+          amount: item.amount,
+          ingredient_cost: item.cost,
+        }));
+
+        const { error: ingredientsError } = await supabase
+          .from("recipe_ingredients")
+          .insert(recipeIngredients);
+
+        if (ingredientsError) throw ingredientsError;
+
+        toast.success("Receita adicionada com sucesso");
+      }
+
       onSave();
       setOpen(false);
       resetForm();
     } catch (error) {
-      toast.error("Erro ao adicionar receita");
+      toast.error(recipeId ? "Erro ao atualizar receita" : "Erro ao adicionar receita");
       console.error(error);
     } finally {
       setIsLoading(false);
@@ -153,14 +247,16 @@ export function RecipeDialog({ onSave }: RecipeDialogProps) {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button className="gap-2">
-          <PlusCircle size={20} />
-          Nova Receita
-        </Button>
+        {trigger || (
+          <Button className="gap-2">
+            <PlusCircle size={20} />
+            Nova Receita
+          </Button>
+        )}
       </DialogTrigger>
       <DialogContent className="max-w-2xl">
         <DialogHeader>
-          <DialogTitle>Nova Receita</DialogTitle>
+          <DialogTitle>{recipeId ? "Editar Receita" : "Nova Receita"}</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-6">
           <div className="space-y-2">
@@ -257,7 +353,7 @@ export function RecipeDialog({ onSave }: RecipeDialogProps) {
               Cancelar
             </Button>
             <Button type="submit" disabled={isLoading}>
-              Salvar
+              {recipeId ? "Atualizar" : "Salvar"}
             </Button>
           </div>
         </form>
