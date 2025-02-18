@@ -18,6 +18,7 @@ import { IngredientDialog } from "./IngredientDialog";
 type Ingredient = {
   id: string;
   name: string;
+  brand: string;
   unit: string;
   package_cost: number;
   package_amount: number;
@@ -27,6 +28,7 @@ type Ingredient = {
 
 const Ingredients = () => {
   const [isLoading, setIsLoading] = useState(false);
+  const [selectedIngredient, setSelectedIngredient] = useState<Ingredient | null>(null);
 
   const { data: ingredients, refetch } = useQuery({
     queryKey: ["ingredients"],
@@ -67,10 +69,19 @@ const Ingredients = () => {
     }
   };
 
+  const handleEdit = (ingredient: Ingredient) => {
+    setSelectedIngredient(ingredient);
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
-        <h1 className="text-2xl font-semibold tracking-tight">Ingredientes</h1>
+        <div>
+          <h1 className="text-2xl font-semibold tracking-tight">Ingredientes</h1>
+          <p className="text-sm text-muted-foreground">
+            Gerencie seus ingredientes e seus custos
+          </p>
+        </div>
         <IngredientDialog onSave={refetch} />
       </div>
 
@@ -79,6 +90,7 @@ const Ingredients = () => {
           <TableHeader>
             <TableRow>
               <TableHead>Nome</TableHead>
+              <TableHead>Marca</TableHead>
               <TableHead>Unidade</TableHead>
               <TableHead>Custo do Pacote</TableHead>
               <TableHead>Quantidade no Pacote</TableHead>
@@ -90,6 +102,7 @@ const Ingredients = () => {
             {ingredients?.map((ingredient) => (
               <TableRow key={ingredient.id}>
                 <TableCell>{ingredient.name}</TableCell>
+                <TableCell>{ingredient.brand}</TableCell>
                 <TableCell>{ingredient.unit}</TableCell>
                 <TableCell>R$ {ingredient.package_cost.toFixed(2)}</TableCell>
                 <TableCell>
@@ -97,7 +110,12 @@ const Ingredients = () => {
                 </TableCell>
                 <TableCell>R$ {ingredient.cost_per_unit.toFixed(2)}</TableCell>
                 <TableCell className="space-x-2">
-                  <Button variant="ghost" size="icon" className="h-8 w-8">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8"
+                    onClick={() => handleEdit(ingredient)}
+                  >
                     <Pencil size={16} />
                   </Button>
                   <Button
@@ -114,7 +132,7 @@ const Ingredients = () => {
             ))}
             {(!ingredients || ingredients.length === 0) && (
               <TableRow>
-                <TableCell colSpan={6} className="text-center py-8 text-neutral-500">
+                <TableCell colSpan={7} className="text-center py-8 text-neutral-500">
                   Nenhum ingrediente cadastrado
                 </TableCell>
               </TableRow>

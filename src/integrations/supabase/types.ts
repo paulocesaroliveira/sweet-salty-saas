@@ -11,6 +11,7 @@ export type Database = {
     Tables: {
       ingredients: {
         Row: {
+          brand: string | null
           cost_per_unit: number
           created_at: string
           id: string
@@ -22,6 +23,7 @@ export type Database = {
           vendor_id: string
         }
         Insert: {
+          brand?: string | null
           cost_per_unit: number
           created_at?: string
           id?: string
@@ -33,6 +35,7 @@ export type Database = {
           vendor_id: string
         }
         Update: {
+          brand?: string | null
           cost_per_unit?: number
           created_at?: string
           id?: string
