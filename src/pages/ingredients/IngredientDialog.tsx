@@ -14,10 +14,25 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 type IngredientDialogProps = {
   onSave: () => void;
 };
+
+const VALID_UNITS = [
+  { value: "kg", label: "Quilograma (kg)" },
+  { value: "g", label: "Grama (g)" },
+  { value: "l", label: "Litro (l)" },
+  { value: "ml", label: "Mililitro (ml)" },
+  { value: "un", label: "Unidade (un)" },
+];
 
 export function IngredientDialog({ onSave }: IngredientDialogProps) {
   const [open, setOpen] = useState(false);
@@ -95,12 +110,18 @@ export function IngredientDialog({ onSave }: IngredientDialogProps) {
           </div>
           <div className="space-y-2">
             <Label htmlFor="unit">Unidade</Label>
-            <Input
-              id="unit"
-              value={unit}
-              onChange={(e) => setUnit(e.target.value)}
-              placeholder="Ex: kg"
-            />
+            <Select value={unit} onValueChange={setUnit}>
+              <SelectTrigger>
+                <SelectValue placeholder="Selecione uma unidade" />
+              </SelectTrigger>
+              <SelectContent>
+                {VALID_UNITS.map((unit) => (
+                  <SelectItem key={unit.value} value={unit.value}>
+                    {unit.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
           <div className="space-y-2">
             <Label htmlFor="packageCost">Custo do Pacote (R$)</Label>
