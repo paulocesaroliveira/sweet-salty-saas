@@ -13,6 +13,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { toast } from "sonner";
+import { IngredientDialog } from "./IngredientDialog";
 
 type Ingredient = {
   id: string;
@@ -70,10 +71,7 @@ const Ingredients = () => {
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <h1 className="text-2xl font-semibold tracking-tight">Ingredientes</h1>
-        <Button className="gap-2">
-          <PlusCircle size={20} />
-          Novo Ingrediente
-        </Button>
+        <IngredientDialog onSave={refetch} />
       </div>
 
       <div className="border rounded-lg">
