@@ -17,6 +17,7 @@ import Calendar from "./pages/calendar/Calendar";
 import Settings from "./pages/settings/Settings";
 import Ingredients from "./pages/ingredients/Ingredients";
 import Recipes from "./pages/recipes/Recipes";
+import Customers from "./pages/customers/Customers";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -42,6 +43,7 @@ const App = () => (
               <Route path="/products" element={<Products />} />
               <Route path="/ingredients" element={<Ingredients />} />
               <Route path="/recipes" element={<Recipes />} />
+              <Route path="/customers" element={<Customers />} />
               <Route path="/orders" element={<Orders />} />
               <Route path="/calendar" element={<Calendar />} />
               <Route path="/settings" element={<Settings />} />

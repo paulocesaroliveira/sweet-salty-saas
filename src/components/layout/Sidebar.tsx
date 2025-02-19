@@ -10,7 +10,8 @@ import {
   Menu,
   X,
   Cookie,
-  UtensilsCrossed
+  UtensilsCrossed,
+  Users
 } from "lucide-react";
 
 const Sidebar = () => {
@@ -21,6 +22,7 @@ const Sidebar = () => {
     { icon: Package, label: "Produtos da Loja", path: "/products" },
     { icon: Cookie, label: "Ingredientes", path: "/ingredients" },
     { icon: UtensilsCrossed, label: "Receitas", path: "/recipes" },
+    { icon: Users, label: "Clientes", path: "/customers" },
     { icon: ShoppingCart, label: "Pedidos", path: "/orders" },
     { icon: Calendar, label: "Agenda", path: "/calendar" },
     { icon: Settings, label: "Configurações", path: "/settings" },
