@@ -16,9 +16,22 @@ type AddressDialogProps = {
   onSuccess: () => void;
 };
 
+// Define um tipo para o formulário onde todos os campos obrigatórios devem estar presentes
+type AddressFormData = {
+  street: string;
+  number: string;
+  complement: string | null;
+  neighborhood: string;
+  city: string;
+  state: string;
+  zip_code: string;
+  reference: string | null;
+  is_default: boolean;
+};
+
 const AddressDialog = ({ open, onOpenChange, customerId, address, onSuccess }: AddressDialogProps) => {
   const [loading, setLoading] = useState(false);
-  const [formData, setFormData] = useState<Partial<CustomerAddress>>(
+  const [formData, setFormData] = useState<AddressFormData>(
     address || {
       street: "",
       number: "",
@@ -37,7 +50,8 @@ const AddressDialog = ({ open, onOpenChange, customerId, address, onSuccess }: A
     setLoading(true);
 
     try {
-      const dataWithCustomerId = {
+      // Garantimos que todos os campos obrigatórios estão presentes
+      const dataToSave = {
         ...formData,
         customer_id: customerId,
       };
@@ -45,7 +59,7 @@ const AddressDialog = ({ open, onOpenChange, customerId, address, onSuccess }: A
       if (address) {
         const { error } = await supabase
           .from("customer_addresses")
-          .update(dataWithCustomerId)
+          .update(dataToSave)
           .eq("id", address.id);
 
         if (error) throw error;
@@ -53,7 +67,7 @@ const AddressDialog = ({ open, onOpenChange, customerId, address, onSuccess }: A
       } else {
         const { error } = await supabase
           .from("customer_addresses")
-          .insert(dataWithCustomerId);
+          .insert(dataToSave);
 
         if (error) throw error;
         toast.success("Endereço cadastrado com sucesso!");
@@ -82,7 +96,7 @@ const AddressDialog = ({ open, onOpenChange, customerId, address, onSuccess }: A
             <Label htmlFor="street">Rua *</Label>
             <Input
               id="street"
-              value={formData.street || ""}
+              value={formData.street}
               onChange={(e) =>
                 setFormData((prev) => ({ ...prev, street: e.target.value }))
               }
@@ -95,7 +109,7 @@ const AddressDialog = ({ open, onOpenChange, customerId, address, onSuccess }: A
               <Label htmlFor="number">Número *</Label>
               <Input
                 id="number"
-                value={formData.number || ""}
+                value={formData.number}
                 onChange={(e) =>
                   setFormData((prev) => ({ ...prev, number: e.target.value }))
                 }
@@ -119,7 +133,7 @@ const AddressDialog = ({ open, onOpenChange, customerId, address, onSuccess }: A
             <Label htmlFor="neighborhood">Bairro *</Label>
             <Input
               id="neighborhood"
-              value={formData.neighborhood || ""}
+              value={formData.neighborhood}
               onChange={(e) =>
                 setFormData((prev) => ({ ...prev, neighborhood: e.target.value }))
               }
@@ -132,7 +146,7 @@ const AddressDialog = ({ open, onOpenChange, customerId, address, onSuccess }: A
               <Label htmlFor="city">Cidade *</Label>
               <Input
                 id="city"
-                value={formData.city || ""}
+                value={formData.city}
                 onChange={(e) =>
                   setFormData((prev) => ({ ...prev, city: e.target.value }))
                 }
@@ -144,7 +158,7 @@ const AddressDialog = ({ open, onOpenChange, customerId, address, onSuccess }: A
               <Label htmlFor="state">Estado *</Label>
               <Input
                 id="state"
-                value={formData.state || ""}
+                value={formData.state}
                 onChange={(e) =>
                   setFormData((prev) => ({ ...prev, state: e.target.value }))
                 }
@@ -158,7 +172,7 @@ const AddressDialog = ({ open, onOpenChange, customerId, address, onSuccess }: A
             <Label htmlFor="zip_code">CEP *</Label>
             <Input
               id="zip_code"
-              value={formData.zip_code || ""}
+              value={formData.zip_code}
               onChange={(e) =>
                 setFormData((prev) => ({ ...prev, zip_code: e.target.value }))
               }
