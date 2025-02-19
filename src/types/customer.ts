@@ -1,6 +1,7 @@
 
 export type Customer = {
   id: string;
+  vendor_id: string;
   full_name: string;
   email: string | null;
   phone: string | null;

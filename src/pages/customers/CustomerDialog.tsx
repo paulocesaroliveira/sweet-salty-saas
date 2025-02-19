@@ -32,16 +32,27 @@ const CustomerDialog = ({ open, onOpenChange, customer, onSuccess }: CustomerDia
     setLoading(true);
 
     try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("Usuário não autenticado");
+
+      const dataWithVendorId = {
+        ...formData,
+        vendor_id: user.id,
+      };
+
       if (customer) {
         const { error } = await supabase
           .from("customers")
-          .update(formData)
+          .update(dataWithVendorId)
           .eq("id", customer.id);
 
         if (error) throw error;
         toast.success("Cliente atualizado com sucesso!");
       } else {
-        const { error } = await supabase.from("customers").insert(formData);
+        const { error } = await supabase
+          .from("customers")
+          .insert(dataWithVendorId);
+
         if (error) throw error;
         toast.success("Cliente cadastrado com sucesso!");
       }
