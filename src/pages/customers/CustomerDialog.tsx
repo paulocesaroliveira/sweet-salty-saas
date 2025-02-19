@@ -15,17 +15,23 @@ type CustomerDialogProps = {
   onSuccess: () => void;
 };
 
+type CustomerFormData = {
+  full_name: string; // Tornando obrigatório
+  email: string | null;
+  phone: string | null;
+  document: string | null;
+  birthday: string | null;
+};
+
 const CustomerDialog = ({ open, onOpenChange, customer, onSuccess }: CustomerDialogProps) => {
   const [loading, setLoading] = useState(false);
-  const [formData, setFormData] = useState<Partial<Customer>>(
-    customer || {
-      full_name: "",
-      email: "",
-      phone: "",
-      document: "",
-      birthday: null,
-    }
-  );
+  const [formData, setFormData] = useState<CustomerFormData>({
+    full_name: customer?.full_name || "",
+    email: customer?.email || null,
+    phone: customer?.phone || null,
+    document: customer?.document || null,
+    birthday: customer?.birthday || null,
+  });
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -80,7 +86,7 @@ const CustomerDialog = ({ open, onOpenChange, customer, onSuccess }: CustomerDia
             <Label htmlFor="full_name">Nome Completo *</Label>
             <Input
               id="full_name"
-              value={formData.full_name || ""}
+              value={formData.full_name}
               onChange={(e) =>
                 setFormData((prev) => ({ ...prev, full_name: e.target.value }))
               }
@@ -95,7 +101,7 @@ const CustomerDialog = ({ open, onOpenChange, customer, onSuccess }: CustomerDia
               type="email"
               value={formData.email || ""}
               onChange={(e) =>
-                setFormData((prev) => ({ ...prev, email: e.target.value }))
+                setFormData((prev) => ({ ...prev, email: e.target.value || null }))
               }
             />
           </div>
@@ -106,7 +112,7 @@ const CustomerDialog = ({ open, onOpenChange, customer, onSuccess }: CustomerDia
               id="phone"
               value={formData.phone || ""}
               onChange={(e) =>
-                setFormData((prev) => ({ ...prev, phone: e.target.value }))
+                setFormData((prev) => ({ ...prev, phone: e.target.value || null }))
               }
             />
           </div>
@@ -117,7 +123,7 @@ const CustomerDialog = ({ open, onOpenChange, customer, onSuccess }: CustomerDia
               id="document"
               value={formData.document || ""}
               onChange={(e) =>
-                setFormData((prev) => ({ ...prev, document: e.target.value }))
+                setFormData((prev) => ({ ...prev, document: e.target.value || null }))
               }
             />
           </div>
@@ -129,7 +135,7 @@ const CustomerDialog = ({ open, onOpenChange, customer, onSuccess }: CustomerDia
               type="date"
               value={formData.birthday || ""}
               onChange={(e) =>
-                setFormData((prev) => ({ ...prev, birthday: e.target.value }))
+                setFormData((prev) => ({ ...prev, birthday: e.target.value || null }))
               }
             />
           </div>
