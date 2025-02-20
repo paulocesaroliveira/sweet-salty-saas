@@ -11,11 +11,14 @@ import {
   X,
   Cookie,
   UtensilsCrossed,
-  Users
+  Users,
+  Store as StoreIcon
 } from "lucide-react";
+import { useAuth } from "@/contexts/AuthContext";
 
 const Sidebar = () => {
   const [isCollapsed, setIsCollapsed] = useState(false);
+  const { user } = useAuth();
 
   const menuItems = [
     { icon: Home, label: "Dashboard", path: "/dashboard" },
@@ -26,6 +29,12 @@ const Sidebar = () => {
     { icon: ShoppingCart, label: "Pedidos", path: "/orders" },
     { icon: Calendar, label: "Agenda", path: "/calendar" },
     { icon: Settings, label: "Configurações", path: "/settings" },
+    { 
+      icon: StoreIcon, 
+      label: "Ver Minha Loja", 
+      path: `/store/${user?.id}`,
+      external: true 
+    },
   ];
 
   return (
@@ -53,18 +62,35 @@ const Sidebar = () => {
 
         <nav className="space-y-2">
           {menuItems.map((item) => (
-            <Link
-              key={item.path}
-              to={item.path}
-              className="flex items-center space-x-3 p-3 rounded-lg text-neutral-700 
+            item.external ? (
+              <a
+                key={item.path}
+                href={item.path}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center space-x-3 p-3 rounded-lg text-neutral-700 
                          hover:bg-neutral-50 transition-colors duration-200"
-            >
-              <item.icon size={20} />
-              <span className={`transition-opacity duration-200 
+              >
+                <item.icon size={20} />
+                <span className={`transition-opacity duration-200 
                               ${isCollapsed ? "opacity-0 hidden" : "opacity-100"}`}>
-                {item.label}
-              </span>
-            </Link>
+                  {item.label}
+                </span>
+              </a>
+            ) : (
+              <Link
+                key={item.path}
+                to={item.path}
+                className="flex items-center space-x-3 p-3 rounded-lg text-neutral-700 
+                         hover:bg-neutral-50 transition-colors duration-200"
+              >
+                <item.icon size={20} />
+                <span className={`transition-opacity duration-200 
+                              ${isCollapsed ? "opacity-0 hidden" : "opacity-100"}`}>
+                  {item.label}
+                </span>
+              </Link>
+            )
           ))}
         </nav>
       </div>
