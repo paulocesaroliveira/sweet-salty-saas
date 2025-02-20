@@ -378,26 +378,35 @@ export type Database = {
         Row: {
           created_at: string
           id: string
+          instagram: string | null
           name: string
           store_description: string | null
           store_name: string
+          telegram: string | null
           updated_at: string
+          whatsapp: string | null
         }
         Insert: {
           created_at?: string
           id: string
+          instagram?: string | null
           name: string
           store_description?: string | null
           store_name: string
+          telegram?: string | null
           updated_at?: string
+          whatsapp?: string | null
         }
         Update: {
           created_at?: string
           id?: string
+          instagram?: string | null
           name?: string
           store_description?: string | null
           store_name?: string
+          telegram?: string | null
           updated_at?: string
+          whatsapp?: string | null
         }
         Relationships: []
       }
@@ -471,6 +480,44 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "recipes_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      testimonials: {
+        Row: {
+          content: string
+          created_at: string
+          customer_name: string
+          id: string
+          rating: number
+          status: string | null
+          vendor_id: string
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          customer_name: string
+          id?: string
+          rating: number
+          status?: string | null
+          vendor_id: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          customer_name?: string
+          id?: string
+          rating?: number
+          status?: string | null
+          vendor_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "testimonials_vendor_id_fkey"
             columns: ["vendor_id"]
             isOneToOne: false
             referencedRelation: "profiles"

@@ -18,6 +18,7 @@ import Settings from "./pages/settings/Settings";
 import Ingredients from "./pages/ingredients/Ingredients";
 import Recipes from "./pages/recipes/Recipes";
 import Customers from "./pages/customers/Customers";
+import Store from "./pages/store/Store";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -30,6 +31,7 @@ const App = () => (
           <Routes>
             <Route path="/" element={<Navigate to="/login" replace />} />
             <Route path="/login" element={<Login />} />
+            <Route path="/store/:vendorId" element={<Store />} />
             
             <Route
               path="/"
