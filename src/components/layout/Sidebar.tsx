@@ -7,18 +7,23 @@ import {
   ShoppingCart, 
   Calendar, 
   Settings,
-  Menu,
-  X,
+  ChevronLeft,
+  ChevronRight,
   Cookie,
   UtensilsCrossed,
   Users,
-  Store as StoreIcon
+  Store as StoreIcon,
+  Sun,
+  Moon
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
+import { useTheme } from "@/hooks/use-theme";
+import { Button } from "@/components/ui/button";
 
 const Sidebar = () => {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const { user } = useAuth();
+  const { theme, setTheme } = useTheme();
 
   const menuItems = [
     { icon: Home, label: "Dashboard", path: "/dashboard" },
@@ -39,26 +44,26 @@ const Sidebar = () => {
 
   return (
     <div
-      className={`relative h-screen bg-white border-r border-neutral-200 transition-all duration-300 
+      className={`relative h-screen bg-card border-r border-border transition-all duration-300 
                   ${isCollapsed ? "w-20" : "w-64"}`}
     >
       <button
         onClick={() => setIsCollapsed(!isCollapsed)}
-        className="absolute -right-3 top-4 bg-white border border-neutral-200 rounded-full p-1.5 
-                   hover:bg-neutral-50 transition-colors duration-200"
+        className="absolute -right-4 top-6 bg-card border border-border rounded-full p-2 
+                   hover:bg-accent transition-colors duration-200 shadow-sm"
       >
         {isCollapsed ? (
-          <Menu size={16} />
+          <ChevronRight size={16} />
         ) : (
-          <X size={16} />
+          <ChevronLeft size={16} />
         )}
       </button>
 
       <div className="p-4">
-        <h1 className={`font-display text-xl mb-8 transition-opacity duration-200 
-                        ${isCollapsed ? "opacity-0" : "opacity-100"}`}>
-          SweetSaas
-        </h1>
+        <div className={`flex items-center justify-between mb-8 transition-opacity duration-200 
+                      ${isCollapsed ? "opacity-0" : "opacity-100"}`}>
+          <h1 className="font-display text-xl">SweetSaas</h1>
+        </div>
 
         <nav className="space-y-2">
           {menuItems.map((item) => (
@@ -68,8 +73,8 @@ const Sidebar = () => {
                 href={item.path}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex items-center space-x-3 p-3 rounded-lg text-neutral-700 
-                         hover:bg-neutral-50 transition-colors duration-200"
+                className="flex items-center space-x-3 p-3 rounded-lg text-foreground 
+                         hover:bg-accent transition-colors duration-200"
               >
                 <item.icon size={20} />
                 <span className={`transition-opacity duration-200 
@@ -81,8 +86,8 @@ const Sidebar = () => {
               <Link
                 key={item.path}
                 to={item.path}
-                className="flex items-center space-x-3 p-3 rounded-lg text-neutral-700 
-                         hover:bg-neutral-50 transition-colors duration-200"
+                className="flex items-center space-x-3 p-3 rounded-lg text-foreground 
+                         hover:bg-accent transition-colors duration-200"
               >
                 <item.icon size={20} />
                 <span className={`transition-opacity duration-200 
@@ -93,6 +98,28 @@ const Sidebar = () => {
             )
           ))}
         </nav>
+
+        {!isCollapsed && (
+          <div className="absolute bottom-4 left-4 right-4">
+            <Button
+              variant="outline"
+              className="w-full justify-start space-x-2"
+              onClick={() => setTheme(theme === "light" ? "dark" : "light")}
+            >
+              {theme === "light" ? (
+                <>
+                  <Moon size={16} />
+                  <span>Modo Escuro</span>
+                </>
+              ) : (
+                <>
+                  <Sun size={16} />
+                  <span>Modo Claro</span>
+                </>
+              )}
+            </Button>
+          </div>
+        )}
       </div>
     </div>
   );
