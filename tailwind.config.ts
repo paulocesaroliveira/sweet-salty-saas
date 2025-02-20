@@ -26,43 +26,41 @@ export default {
         background: "hsl(var(--background))",
         foreground: "hsl(var(--foreground))",
         primary: {
-          DEFAULT: "#FF6B35",
-          hover: "#FF8659",
-          light: "#FFE4D9",
+          DEFAULT: "#E57373",
+          hover: "#ef5350",
+          light: "#ffebee"
+        },
+        pastel: {
+          pink: "#FFB6C1",
+          yellow: "#FCE79C",
+          blue: "#A0D8F1",
+          white: "#FFF8F0"
         },
         secondary: {
-          DEFAULT: "#7DC9AA",
-          hover: "#94D4BB",
-          light: "#E8F6F0",
+          DEFAULT: "#A0D8F1",
+          hover: "#81D4FA",
+          light: "#E1F5FE",
         },
-        success: {
-          DEFAULT: "#4CAF50",
-          hover: "#66BB6A",
+        destructive: {
+          DEFAULT: "hsl(var(--destructive))",
+          foreground: "hsl(var(--destructive-foreground))",
         },
-        warning: {
-          DEFAULT: "#FFC107",
-          hover: "#FFD54F",
+        muted: {
+          DEFAULT: "hsl(var(--muted))",
+          foreground: "hsl(var(--muted-foreground))",
         },
-        danger: {
-          DEFAULT: "#EF4444",
-          hover: "#F87171",
+        accent: {
+          DEFAULT: "hsl(var(--accent))",
+          foreground: "hsl(var(--accent-foreground))",
         },
-        neutral: {
-          50: "#F7F7F7",
-          100: "#E5E5E5",
-          200: "#D4D4D4",
-          300: "#A3A3A3",
-          400: "#737373",
-          500: "#525252",
-          600: "#404040",
-          700: "#2D3436",
-          800: "#262626",
-          900: "#171717",
+        popover: {
+          DEFAULT: "hsl(var(--popover))",
+          foreground: "hsl(var(--popover-foreground))",
         },
-      },
-      fontFamily: {
-        sans: ["Inter", "sans-serif"],
-        display: ["Playfair Display", "serif"],
+        card: {
+          DEFAULT: "hsl(var(--card))",
+          foreground: "hsl(var(--card-foreground))",
+        },
       },
       borderRadius: {
         lg: "var(--radius)",
@@ -79,19 +77,23 @@ export default {
           to: { height: "0" },
         },
         "fade-in": {
-          "0%": { opacity: "0" },
-          "100%": { opacity: "1" },
+          "0%": { opacity: "0", transform: "translateY(10px)" },
+          "100%": { opacity: "1", transform: "translateY(0)" }
         },
         "fade-out": {
-          "0%": { opacity: "1" },
-          "100%": { opacity: "0" },
-        },
+          "0%": { opacity: "1", transform: "translateY(0)" },
+          "100%": { opacity: "0", transform: "translateY(10px)" }
+        }
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
         "accordion-up": "accordion-up 0.2s ease-out",
-        "fade-in": "fade-in 0.2s ease-out",
-        "fade-out": "fade-out 0.2s ease-out",
+        "fade-in": "fade-in 0.3s ease-out",
+        "fade-out": "fade-out 0.3s ease-out"
+      },
+      fontFamily: {
+        sans: ["Poppins", "sans-serif"],
+        display: ["Montserrat", "sans-serif"],
       },
     },
   },
