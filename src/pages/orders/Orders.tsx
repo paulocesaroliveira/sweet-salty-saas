@@ -1,11 +1,11 @@
-
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { Calendar as CalendarIcon, Package, Search } from "lucide-react";
+import { Calendar as CalendarIcon, Package, Search, Plus } from "lucide-react";
 import { Calendar } from "@/components/ui/calendar";
 import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import {
@@ -15,6 +15,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 
 type Order = {
   id: string;
@@ -23,6 +31,17 @@ type Order = {
   total_amount: number;
   status: "pending" | "preparing" | "delivered" | "cancelled";
   delivery_date: string | null;
+  payment_method?: string;
+  delivery_method?: string;
+  notes?: string;
+  discount_amount?: number;
+};
+
+type OrderProduct = {
+  id: string;
+  name: string;
+  price: number;
+  quantity: number;
 };
 
 const statusConfig = {
@@ -48,6 +67,14 @@ const Orders = () => {
   const [search, setSearch] = useState("");
   const [date, setDate] = useState<Date | undefined>(new Date());
   const [isUpdating, setIsUpdating] = useState(false);
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [selectedProducts, setSelectedProducts] = useState<OrderProduct[]>([]);
+  const [selectedCustomerId, setSelectedCustomerId] = useState<string>("");
+  const [selectedAddressId, setSelectedAddressId] = useState<string>("");
+  const [paymentMethod, setPaymentMethod] = useState<string>("");
+  const [deliveryMethod, setDeliveryMethod] = useState<string>("");
+  const [notes, setNotes] = useState<string>("");
+  const [discountAmount, setDiscountAmount] = useState<number>(0);
 
   const { data: orders, refetch } = useQuery({
     queryKey: ["orders", date, search],
@@ -99,6 +126,45 @@ const Orders = () => {
     },
   });
 
+  const { data: products } = useQuery({
+    queryKey: ["products"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("products")
+        .select("*")
+        .eq("active", true);
+
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  const { data: customers } = useQuery({
+    queryKey: ["customers"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("customers")
+        .select("*");
+
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  const { data: addresses } = useQuery({
+    queryKey: ["addresses", selectedCustomerId],
+    enabled: !!selectedCustomerId,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("customer_addresses")
+        .select("*")
+        .eq("customer_id", selectedCustomerId);
+
+      if (error) throw error;
+      return data;
+    },
+  });
+
   const updateOrderStatus = async (orderId: string, newStatus: Order["status"]) => {
     setIsUpdating(true);
     try {
@@ -119,11 +185,110 @@ const Orders = () => {
     }
   };
 
+  const handleAddProduct = (productId: string) => {
+    const product = products?.find(p => p.id === productId);
+    if (!product) return;
+
+    setSelectedProducts(prev => {
+      const existing = prev.find(p => p.id === productId);
+      if (existing) {
+        return prev.map(p =>
+          p.id === productId
+            ? { ...p, quantity: p.quantity + 1 }
+            : p
+        );
+      }
+      return [...prev, { ...product, quantity: 1 }];
+    });
+  };
+
+  const handleUpdateQuantity = (productId: string, quantity: number) => {
+    setSelectedProducts(prev =>
+      prev.map(p =>
+        p.id === productId
+          ? { ...p, quantity: Math.max(0, quantity) }
+          : p
+      ).filter(p => p.quantity > 0)
+    );
+  };
+
+  const calculateTotal = () => {
+    const subtotal = selectedProducts.reduce(
+      (sum, product) => sum + product.price * product.quantity,
+      0
+    );
+    return subtotal - (discountAmount || 0);
+  };
+
+  const handleCreateOrder = async () => {
+    if (!selectedCustomerId || !selectedAddressId || selectedProducts.length === 0) {
+      toast.error("Preencha todos os campos obrigatórios");
+      return;
+    }
+
+    setIsUpdating(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("Usuário não autenticado");
+
+      const customer = customers?.find(c => c.id === selectedCustomerId);
+      
+      const orderData = {
+        customer_id: selectedCustomerId,
+        customer_name: customer?.full_name || "",
+        address_id: selectedAddressId,
+        vendor_id: user.id,
+        total_amount: calculateTotal(),
+        payment_method: paymentMethod,
+        delivery_method: deliveryMethod,
+        notes: notes || null,
+        discount_amount: discountAmount || 0,
+        status: "pending",
+      };
+
+      const { data: order, error: orderError } = await supabase
+        .from("orders")
+        .insert(orderData)
+        .select()
+        .single();
+
+      if (orderError) throw orderError;
+
+      const orderItems = selectedProducts.map(product => ({
+        order_id: order.id,
+        product_id: product.id,
+        quantity: product.quantity,
+        unit_price: product.price,
+      }));
+
+      const { error: itemsError } = await supabase
+        .from("order_items")
+        .insert(orderItems);
+
+      if (itemsError) throw itemsError;
+
+      toast.success("Pedido criado com sucesso!");
+      setDialogOpen(false);
+      refetch();
+    } catch (error) {
+      console.error(error);
+      toast.error("Erro ao criar pedido");
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-display mb-1">Pedidos</h1>
-        <p className="text-neutral-600">Gerencie seus pedidos</p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-display mb-1">Pedidos</h1>
+          <p className="text-neutral-600">Gerencie seus pedidos</p>
+        </div>
+        <Button onClick={() => setDialogOpen(true)}>
+          <Plus size={20} className="mr-2" />
+          Novo Pedido
+        </Button>
       </div>
 
       <div className="flex gap-6">
@@ -239,6 +404,188 @@ const Orders = () => {
           </div>
         </div>
       </div>
+
+      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+        <DialogContent className="max-w-3xl">
+          <DialogHeader>
+            <DialogTitle>Novo Pedido</DialogTitle>
+          </DialogHeader>
+
+          <div className="space-y-6">
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label>Cliente *</Label>
+                <Select
+                  value={selectedCustomerId}
+                  onValueChange={setSelectedCustomerId}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione um cliente" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {customers?.map((customer) => (
+                      <SelectItem key={customer.id} value={customer.id}>
+                        {customer.full_name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {selectedCustomerId && (
+                <div className="space-y-2">
+                  <Label>Endereço de Entrega *</Label>
+                  <Select
+                    value={selectedAddressId}
+                    onValueChange={setSelectedAddressId}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione um endereço" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {addresses?.map((address) => (
+                        <SelectItem key={address.id} value={address.id}>
+                          {address.street}, {address.number} - {address.neighborhood}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+            </div>
+
+            <div className="space-y-4">
+              <Label>Produtos *</Label>
+              <div className="space-y-2">
+                <Select onValueChange={handleAddProduct}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Adicionar produto" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {products?.map((product) => (
+                      <SelectItem key={product.id} value={product.id}>
+                        {product.name} - R$ {product.price.toFixed(2)}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+
+                <div className="space-y-2 mt-4">
+                  {selectedProducts.map((product) => (
+                    <div
+                      key={product.id}
+                      className="flex items-center justify-between p-2 border rounded"
+                    >
+                      <div>
+                        <p className="font-medium">{product.name}</p>
+                        <p className="text-sm text-neutral-600">
+                          R$ {product.price.toFixed(2)}
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          className="p-1 hover:bg-neutral-100 rounded"
+                          onClick={() =>
+                            handleUpdateQuantity(product.id, product.quantity - 1)
+                          }
+                        >
+                          -
+                        </button>
+                        <span className="w-8 text-center">{product.quantity}</span>
+                        <button
+                          type="button"
+                          className="p-1 hover:bg-neutral-100 rounded"
+                          onClick={() =>
+                            handleUpdateQuantity(product.id, product.quantity + 1)
+                          }
+                        >
+                          +
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Forma de Pagamento *</Label>
+                <Select value={paymentMethod} onValueChange={setPaymentMethod}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="money">Dinheiro</SelectItem>
+                    <SelectItem value="credit_card">Cartão de Crédito</SelectItem>
+                    <SelectItem value="debit_card">Cartão de Débito</SelectItem>
+                    <SelectItem value="pix">PIX</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label>Método de Entrega *</Label>
+                <Select value={deliveryMethod} onValueChange={setDeliveryMethod}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="delivery">Entrega</SelectItem>
+                    <SelectItem value="pickup">Retirada</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Desconto</Label>
+                <Input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={discountAmount || ""}
+                  onChange={(e) => setDiscountAmount(Number(e.target.value))}
+                  placeholder="0.00"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label>Total</Label>
+                <Input
+                  value={`R$ ${calculateTotal().toFixed(2)}`}
+                  readOnly
+                  disabled
+                />
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Notas do Pedido</Label>
+              <Textarea
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+                placeholder="Observações sobre o pedido..."
+              />
+            </div>
+
+            <div className="flex justify-end gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setDialogOpen(false)}
+              >
+                Cancelar
+              </Button>
+              <Button onClick={handleCreateOrder} disabled={isUpdating}>
+                {isUpdating ? "Criando..." : "Criar Pedido"}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
