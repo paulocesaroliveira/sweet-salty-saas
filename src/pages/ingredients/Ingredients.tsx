@@ -1,9 +1,10 @@
 
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { PlusCircle, Pencil, Trash2 } from "lucide-react";
+import { PlusCircle, Search } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import {
   Table,
   TableBody,
@@ -18,16 +19,16 @@ import { IngredientDialog } from "./IngredientDialog";
 type Ingredient = {
   id: string;
   name: string;
-  brand: string;
+  type: 'solid' | 'liquid';
   unit: string;
+  brand: string | null;
   package_cost: number;
   package_amount: number;
   cost_per_unit: number;
-  created_at: string;
 };
 
 const Ingredients = () => {
-  const [isLoading, setIsLoading] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
   const [selectedIngredient, setSelectedIngredient] = useState<Ingredient | null>(null);
 
   const { data: ingredients, refetch } = useQuery({
@@ -47,10 +48,14 @@ const Ingredients = () => {
     },
   });
 
+  const filteredIngredients = ingredients?.filter(ingredient =>
+    ingredient.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (ingredient.brand?.toLowerCase() || "").includes(searchTerm.toLowerCase())
+  );
+
   const handleDelete = async (id: string) => {
     if (!confirm("Tem certeza que deseja excluir este ingrediente?")) return;
 
-    setIsLoading(true);
     try {
       const { error } = await supabase
         .from("ingredients")
@@ -64,76 +69,76 @@ const Ingredients = () => {
     } catch (error) {
       toast.error("Erro ao excluir ingrediente");
       console.error(error);
-    } finally {
-      setIsLoading(false);
     }
-  };
-
-  const handleEdit = (ingredient: Ingredient) => {
-    setSelectedIngredient(ingredient);
   };
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
+      <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Ingredientes</h1>
-          <p className="text-sm text-muted-foreground">
-            Gerencie seus ingredientes e seus custos
+          <h1 className="text-3xl font-display mb-2">Ingredientes</h1>
+          <p className="text-muted-foreground">
+            Cadastre e gerencie os ingredientes utilizados nas suas receitas
           </p>
         </div>
         <IngredientDialog onSave={refetch} />
       </div>
 
-      <div className="border rounded-lg">
+      <div className="flex items-center gap-2 max-w-sm">
+        <Search className="text-muted-foreground" size={20} />
+        <Input
+          placeholder="Buscar ingredientes..."
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          className="w-full"
+        />
+      </div>
+
+      <div className="border rounded-lg bg-card">
         <Table>
           <TableHeader>
             <TableRow>
               <TableHead>Nome</TableHead>
+              <TableHead>Tipo</TableHead>
               <TableHead>Marca</TableHead>
-              <TableHead>Unidade</TableHead>
-              <TableHead>Custo do Pacote</TableHead>
-              <TableHead>Quantidade no Pacote</TableHead>
-              <TableHead>Custo por Unidade</TableHead>
-              <TableHead className="w-[100px]">Ações</TableHead>
+              <TableHead>Qtd. Embalagem</TableHead>
+              <TableHead>Custo Emb.</TableHead>
+              <TableHead>Custo/Unidade</TableHead>
+              <TableHead className="text-right">Ações</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {ingredients?.map((ingredient) => (
+            {filteredIngredients?.map((ingredient) => (
               <TableRow key={ingredient.id}>
-                <TableCell>{ingredient.name}</TableCell>
-                <TableCell>{ingredient.brand}</TableCell>
-                <TableCell>{ingredient.unit}</TableCell>
-                <TableCell>R$ {ingredient.package_cost.toFixed(2)}</TableCell>
+                <TableCell className="font-medium">{ingredient.name}</TableCell>
+                <TableCell>
+                  {ingredient.type === 'solid' ? 'Sólido' : 'Líquido'}
+                </TableCell>
+                <TableCell>{ingredient.brand || "-"}</TableCell>
                 <TableCell>
                   {ingredient.package_amount} {ingredient.unit}
                 </TableCell>
-                <TableCell>R$ {ingredient.cost_per_unit.toFixed(2)}</TableCell>
-                <TableCell className="space-x-2">
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-8 w-8"
-                    onClick={() => handleEdit(ingredient)}
-                  >
-                    <Pencil size={16} />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-8 w-8 text-red-500 hover:text-red-600"
-                    onClick={() => handleDelete(ingredient.id)}
-                    disabled={isLoading}
-                  >
-                    <Trash2 size={16} />
-                  </Button>
+                <TableCell>
+                  R$ {ingredient.package_cost.toFixed(2)}
+                </TableCell>
+                <TableCell>
+                  R$ {ingredient.cost_per_unit.toFixed(3)}/{ingredient.unit}
+                </TableCell>
+                <TableCell className="text-right">
+                  <IngredientDialog
+                    ingredient={ingredient}
+                    onSave={refetch}
+                  />
                 </TableCell>
               </TableRow>
             ))}
-            {(!ingredients || ingredients.length === 0) && (
+
+            {(!filteredIngredients || filteredIngredients.length === 0) && (
               <TableRow>
-                <TableCell colSpan={7} className="text-center py-8 text-neutral-500">
-                  Nenhum ingrediente cadastrado
+                <TableCell colSpan={7} className="h-32 text-center text-muted-foreground">
+                  {searchTerm
+                    ? "Nenhum ingrediente encontrado para esta busca"
+                    : "Nenhum ingrediente cadastrado"}
                 </TableCell>
               </TableRow>
             )}
