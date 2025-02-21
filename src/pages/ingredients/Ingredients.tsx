@@ -44,7 +44,11 @@ const Ingredients = () => {
         throw error;
       }
 
-      return data as Ingredient[];
+      // Garantindo que o tipo está definido para os registros existentes
+      return (data || []).map(ingredient => ({
+        ...ingredient,
+        type: ingredient.type || 'solid'
+      })) as Ingredient[];
     },
   });
 

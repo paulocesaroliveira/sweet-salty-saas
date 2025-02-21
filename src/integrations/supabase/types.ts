@@ -183,6 +183,7 @@ export type Database = {
           name: string
           package_amount: number
           package_cost: number
+          type: string
           unit: string
           updated_at: string
           vendor_id: string
@@ -195,6 +196,7 @@ export type Database = {
           name: string
           package_amount: number
           package_cost: number
+          type?: string
           unit: string
           updated_at?: string
           vendor_id: string
@@ -207,6 +209,7 @@ export type Database = {
           name?: string
           package_amount?: number
           package_cost?: number
+          type?: string
           unit?: string
           updated_at?: string
           vendor_id?: string
