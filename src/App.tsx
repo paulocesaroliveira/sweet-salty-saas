@@ -21,6 +21,7 @@ import Recipes from "./pages/recipes/Recipes";
 import Customers from "./pages/customers/Customers";
 import Store from "./pages/store/Store";
 import Packages from "./pages/packages/Packages";
+import Costs from "./pages/costs/Costs";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -50,6 +51,7 @@ const App = () => (
                 <Route path="/recipes" element={<Recipes />} />
                 <Route path="/customers" element={<Customers />} />
                 <Route path="/packages" element={<Packages />} />
+                <Route path="/costs" element={<Costs />} />
                 <Route path="/orders" element={<Orders />} />
                 <Route path="/calendar" element={<Calendar />} />
                 <Route path="/settings" element={<Settings />} />

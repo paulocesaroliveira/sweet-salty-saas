@@ -174,6 +174,36 @@ export type Database = {
           },
         ]
       }
+      fixed_costs: {
+        Row: {
+          amount: number
+          created_at: string
+          frequency: string
+          id: string
+          name: string
+          updated_at: string
+          vendor_id: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          frequency: string
+          id?: string
+          name: string
+          updated_at?: string
+          vendor_id: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          frequency?: string
+          id?: string
+          name?: string
+          updated_at?: string
+          vendor_id?: string
+        }
+        Relationships: []
+      }
       ingredients: {
         Row: {
           brand: string | null
@@ -223,6 +253,30 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      labor_costs: {
+        Row: {
+          created_at: string
+          hourly_rate: number
+          id: string
+          updated_at: string
+          vendor_id: string
+        }
+        Insert: {
+          created_at?: string
+          hourly_rate: number
+          id?: string
+          updated_at?: string
+          vendor_id: string
+        }
+        Update: {
+          created_at?: string
+          hourly_rate?: number
+          id?: string
+          updated_at?: string
+          vendor_id?: string
+        }
+        Relationships: []
       }
       order_items: {
         Row: {
@@ -365,6 +419,74 @@ export type Database = {
           vendor_id?: string
         }
         Relationships: []
+      }
+      product_pricing: {
+        Row: {
+          created_at: string
+          final_price: number
+          fixed_costs_share: number
+          id: string
+          labor_cost: number
+          labor_minutes: number
+          packaging_cost: number
+          profit_margin: number
+          recipe_cost: number
+          recipe_id: string
+          suggested_price: number
+          total_cost: number
+          unit_cost: number
+          unit_price: number
+          updated_at: string
+          vendor_id: string
+          yield_amount: number
+        }
+        Insert: {
+          created_at?: string
+          final_price: number
+          fixed_costs_share: number
+          id?: string
+          labor_cost: number
+          labor_minutes: number
+          packaging_cost: number
+          profit_margin: number
+          recipe_cost: number
+          recipe_id: string
+          suggested_price: number
+          total_cost: number
+          unit_cost: number
+          unit_price: number
+          updated_at?: string
+          vendor_id: string
+          yield_amount: number
+        }
+        Update: {
+          created_at?: string
+          final_price?: number
+          fixed_costs_share?: number
+          id?: string
+          labor_cost?: number
+          labor_minutes?: number
+          packaging_cost?: number
+          profit_margin?: number
+          recipe_cost?: number
+          recipe_id?: string
+          suggested_price?: number
+          total_cost?: number
+          unit_cost?: number
+          unit_price?: number
+          updated_at?: string
+          vendor_id?: string
+          yield_amount?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "product_pricing_recipe_id_fkey"
+            columns: ["recipe_id"]
+            isOneToOne: false
+            referencedRelation: "recipes"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       products: {
         Row: {

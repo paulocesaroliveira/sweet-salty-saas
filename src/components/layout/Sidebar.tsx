@@ -14,6 +14,7 @@ import {
   Users,
   Store as StoreIcon,
   Box,
+  DollarSign,
   Sun,
   Moon
 } from "lucide-react";
@@ -33,6 +34,7 @@ const Sidebar = () => {
     { icon: UtensilsCrossed, label: "Receitas", path: "/recipes" },
     { icon: Users, label: "Clientes", path: "/customers" },
     { icon: Box, label: "Embalagens", path: "/packages" },
+    { icon: DollarSign, label: "Custos", path: "/costs" },
     { icon: ShoppingCart, label: "Pedidos", path: "/orders" },
     { icon: Calendar, label: "Agenda", path: "/calendar" },
     { icon: Settings, label: "Configurações", path: "/settings" },
