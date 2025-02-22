@@ -23,6 +23,7 @@ import Store from "./pages/store/Store";
 import Packages from "./pages/packages/Packages";
 import Costs from "./pages/costs/Costs";
 import Pricing from "./pages/pricing/Pricing";
+import Reports from "./pages/reports/Reports";
 import NotFound from "./pages/NotFound";
 
 const App = () => {
@@ -62,6 +63,7 @@ const App = () => {
                   <Route path="/packages" element={<Packages />} />
                   <Route path="/costs" element={<Costs />} />
                   <Route path="/pricing" element={<Pricing />} />
+                  <Route path="/reports" element={<Reports />} />
                   <Route path="/orders" element={<Orders />} />
                   <Route path="/calendar" element={<Calendar />} />
                   <Route path="/settings" element={<Settings />} />
