@@ -13,6 +13,7 @@ import {
   UtensilsCrossed,
   Users,
   Store as StoreIcon,
+  Box,
   Sun,
   Moon
 } from "lucide-react";
@@ -31,6 +32,7 @@ const Sidebar = () => {
     { icon: Cookie, label: "Ingredientes", path: "/ingredients" },
     { icon: UtensilsCrossed, label: "Receitas", path: "/recipes" },
     { icon: Users, label: "Clientes", path: "/customers" },
+    { icon: Box, label: "Embalagens", path: "/packages" },
     { icon: ShoppingCart, label: "Pedidos", path: "/orders" },
     { icon: Calendar, label: "Agenda", path: "/calendar" },
     { icon: Settings, label: "Configurações", path: "/settings" },

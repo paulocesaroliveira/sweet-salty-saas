@@ -20,6 +20,7 @@ import Ingredients from "./pages/ingredients/Ingredients";
 import Recipes from "./pages/recipes/Recipes";
 import Customers from "./pages/customers/Customers";
 import Store from "./pages/store/Store";
+import Packages from "./pages/packages/Packages";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -48,6 +49,7 @@ const App = () => (
                 <Route path="/ingredients" element={<Ingredients />} />
                 <Route path="/recipes" element={<Recipes />} />
                 <Route path="/customers" element={<Customers />} />
+                <Route path="/packages" element={<Packages />} />
                 <Route path="/orders" element={<Orders />} />
                 <Route path="/calendar" element={<Calendar />} />
                 <Route path="/settings" element={<Settings />} />
