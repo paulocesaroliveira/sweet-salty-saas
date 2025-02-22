@@ -15,6 +15,7 @@ import {
   Store as StoreIcon,
   Box,
   DollarSign,
+  Calculator,
   Sun,
   Moon
 } from "lucide-react";
@@ -35,6 +36,7 @@ const Sidebar = () => {
     { icon: Users, label: "Clientes", path: "/customers" },
     { icon: Box, label: "Embalagens", path: "/packages" },
     { icon: DollarSign, label: "Custos", path: "/costs" },
+    { icon: Calculator, label: "Precificação", path: "/pricing" },
     { icon: ShoppingCart, label: "Pedidos", path: "/orders" },
     { icon: Calendar, label: "Agenda", path: "/calendar" },
     { icon: Settings, label: "Configurações", path: "/settings" },
