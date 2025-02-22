@@ -333,6 +333,39 @@ export type Database = {
           },
         ]
       }
+      packages: {
+        Row: {
+          created_at: string
+          id: string
+          image_url: string | null
+          name: string
+          type: string
+          unit_cost: number
+          updated_at: string
+          vendor_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          image_url?: string | null
+          name: string
+          type: string
+          unit_cost: number
+          updated_at?: string
+          vendor_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          image_url?: string | null
+          name?: string
+          type?: string
+          unit_cost?: number
+          updated_at?: string
+          vendor_id?: string
+        }
+        Relationships: []
+      }
       products: {
         Row: {
           active: boolean | null
