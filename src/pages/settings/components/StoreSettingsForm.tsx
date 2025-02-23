@@ -53,11 +53,13 @@ export function StoreSettingsForm() {
       if (error) throw error;
       
       // Garantir que todos os campos booleanos tenham valores padrão
-      return {
+      const profileData: Partial<Profile> = {
         ...data,
-        is_public: data.is_public ?? true,
-        allow_reviews: data.allow_reviews ?? true,
-      } as Profile;
+        is_public: true,
+        allow_reviews: true,
+      };
+      
+      return profileData as Profile;
     },
     enabled: !!user?.id,
   });
