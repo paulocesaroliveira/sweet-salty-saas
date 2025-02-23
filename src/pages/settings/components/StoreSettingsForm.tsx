@@ -51,7 +51,13 @@ export function StoreSettingsForm() {
         .single();
 
       if (error) throw error;
-      return data;
+      
+      // Garantir que todos os campos booleanos tenham valores padrão
+      return {
+        ...data,
+        is_public: data.is_public ?? true,
+        allow_reviews: data.allow_reviews ?? true,
+      } as Profile;
     },
     enabled: !!user?.id,
   });
