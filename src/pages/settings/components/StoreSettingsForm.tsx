@@ -17,11 +17,31 @@ import {
   CardTitle 
 } from "@/components/ui/card";
 
+interface Profile {
+  id: string;
+  created_at: string;
+  updated_at: string;
+  name: string;
+  store_name: string;
+  store_description: string | null;
+  whatsapp: string | null;
+  instagram: string | null;
+  telegram: string | null;
+  document: string | null;
+  theme_color: string | null;
+  logo_url: string | null;
+  banner_url: string | null;
+  custom_domain: string | null;
+  subdomain: string | null;
+  is_public: boolean;
+  allow_reviews: boolean;
+}
+
 export function StoreSettingsForm() {
   const { user } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
 
-  const { data: profile, refetch } = useQuery({
+  const { data: profile, refetch } = useQuery<Profile>({
     queryKey: ["profile"],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -83,18 +103,18 @@ export function StoreSettingsForm() {
       const { error } = await supabase
         .from('profiles')
         .update({
-          store_name: formData.get('store_name'),
-          document: formData.get('document'),
-          whatsapp: formData.get('whatsapp'),
-          instagram: formData.get('instagram'),
-          store_description: formData.get('description'),
-          theme_color: formData.get('theme_color'),
+          store_name: String(formData.get('store_name')),
+          document: String(formData.get('document')),
+          whatsapp: String(formData.get('whatsapp')),
+          instagram: String(formData.get('instagram')),
+          store_description: String(formData.get('description')),
+          theme_color: String(formData.get('theme_color')),
           logo_url,
           banner_url,
-          custom_domain: formData.get('custom_domain'),
-          subdomain: formData.get('subdomain'),
-          is_public: (formData.get('is_public') === 'on'),
-          allow_reviews: (formData.get('allow_reviews') === 'on'),
+          custom_domain: String(formData.get('custom_domain')),
+          subdomain: String(formData.get('subdomain')),
+          is_public: formData.get('is_public') === 'on',
+          allow_reviews: formData.get('allow_reviews') === 'on',
         })
         .eq('id', user?.id);
 
@@ -136,7 +156,7 @@ export function StoreSettingsForm() {
               <Input
                 id="document"
                 name="document"
-                defaultValue={profile?.document}
+                defaultValue={profile?.document ?? ''}
                 placeholder="00.000.000/0000-00"
               />
             </div>
@@ -146,7 +166,7 @@ export function StoreSettingsForm() {
               <Input
                 id="whatsapp"
                 name="whatsapp"
-                defaultValue={profile?.whatsapp}
+                defaultValue={profile?.whatsapp ?? ''}
                 placeholder="(00) 00000-0000"
               />
             </div>
@@ -156,7 +176,7 @@ export function StoreSettingsForm() {
               <Input
                 id="instagram"
                 name="instagram"
-                defaultValue={profile?.instagram}
+                defaultValue={profile?.instagram ?? ''}
                 placeholder="@seuperfil"
               />
             </div>
@@ -167,7 +187,7 @@ export function StoreSettingsForm() {
             <Textarea
               id="description"
               name="description"
-              defaultValue={profile?.store_description}
+              defaultValue={profile?.store_description ?? ''}
               placeholder="Conte um pouco sobre seu negócio..."
             />
           </div>
@@ -216,7 +236,7 @@ export function StoreSettingsForm() {
               type="color"
               id="theme_color"
               name="theme_color"
-              defaultValue={profile?.theme_color || "#000000"}
+              defaultValue={profile?.theme_color ?? '#000000'}
               className="h-10 w-20"
             />
           </div>
@@ -236,7 +256,7 @@ export function StoreSettingsForm() {
             <Input
               id="custom_domain"
               name="custom_domain"
-              defaultValue={profile?.custom_domain}
+              defaultValue={profile?.custom_domain ?? ''}
               placeholder="www.minhaloja.com"
             />
           </div>
@@ -247,7 +267,7 @@ export function StoreSettingsForm() {
               <Input
                 id="subdomain"
                 name="subdomain"
-                defaultValue={profile?.subdomain}
+                defaultValue={profile?.subdomain ?? ''}
                 placeholder="minhaloja"
               />
               <span className="text-muted-foreground">.saassobremesas.com</span>
