@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { DatePickerWithRange } from "@/components/ui/date-range-picker";
 import { addDays, startOfMonth, endOfMonth } from "date-fns";
+import { DateRange } from "react-day-picker";
 import { 
   ResponsiveContainer, 
   BarChart, 
@@ -21,7 +22,7 @@ import {
 
 export default function Reports() {
   const [activeTab, setActiveTab] = useState("sales");
-  const [dateRange, setDateRange] = useState({
+  const [dateRange, setDateRange] = useState<DateRange | undefined>({
     from: startOfMonth(new Date()),
     to: endOfMonth(new Date()),
   });
@@ -30,6 +31,8 @@ export default function Reports() {
   const { data: salesData } = useQuery({
     queryKey: ["sales", dateRange],
     queryFn: async () => {
+      if (!dateRange?.from || !dateRange?.to) return [];
+
       const { data, error } = await supabase
         .from("orders")
         .select("created_at, total_amount")
@@ -60,12 +63,15 @@ export default function Reports() {
 
       return salesByDay;
     },
+    enabled: !!dateRange?.from && !!dateRange?.to,
   });
 
   // Produtos mais vendidos
   const { data: topProducts } = useQuery({
     queryKey: ["top-products", dateRange],
     queryFn: async () => {
+      if (!dateRange?.from || !dateRange?.to) return [];
+
       const { data, error } = await supabase
         .from("order_items")
         .select(`
@@ -101,12 +107,19 @@ export default function Reports() {
 
       return productSales.sort((a, b) => b.revenue - a.revenue).slice(0, 5);
     },
+    enabled: !!dateRange?.from && !!dateRange?.to,
   });
 
   // Métricas gerais
   const { data: metrics } = useQuery({
     queryKey: ["metrics", dateRange],
     queryFn: async () => {
+      if (!dateRange?.from || !dateRange?.to) return {
+        totalRevenue: 0,
+        averageTicket: 0,
+        totalOrders: 0,
+      };
+
       const { data: orders, error } = await supabase
         .from("orders")
         .select("total_amount")
@@ -124,6 +137,7 @@ export default function Reports() {
         totalOrders: orders.length,
       };
     },
+    enabled: !!dateRange?.from && !!dateRange?.to,
   });
 
   return (
