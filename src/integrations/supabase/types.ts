@@ -534,35 +534,59 @@ export type Database = {
       }
       profiles: {
         Row: {
+          allow_reviews: boolean | null
+          banner_url: string | null
           created_at: string
+          custom_domain: string | null
+          document: string | null
           id: string
           instagram: string | null
+          is_public: boolean | null
+          logo_url: string | null
           name: string
           store_description: string | null
           store_name: string
+          subdomain: string | null
           telegram: string | null
+          theme_color: string | null
           updated_at: string
           whatsapp: string | null
         }
         Insert: {
+          allow_reviews?: boolean | null
+          banner_url?: string | null
           created_at?: string
+          custom_domain?: string | null
+          document?: string | null
           id: string
           instagram?: string | null
+          is_public?: boolean | null
+          logo_url?: string | null
           name: string
           store_description?: string | null
           store_name: string
+          subdomain?: string | null
           telegram?: string | null
+          theme_color?: string | null
           updated_at?: string
           whatsapp?: string | null
         }
         Update: {
+          allow_reviews?: boolean | null
+          banner_url?: string | null
           created_at?: string
+          custom_domain?: string | null
+          document?: string | null
           id?: string
           instagram?: string | null
+          is_public?: boolean | null
+          logo_url?: string | null
           name?: string
           store_description?: string | null
           store_name?: string
+          subdomain?: string | null
           telegram?: string | null
+          theme_color?: string | null
           updated_at?: string
           whatsapp?: string | null
         }
