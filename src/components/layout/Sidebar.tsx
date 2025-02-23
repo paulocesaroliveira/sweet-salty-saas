@@ -46,7 +46,6 @@ const Sidebar = () => {
       icon: StoreIcon, 
       label: "Ver Minha Loja", 
       path: `/store/${user?.id}`,
-      external: true 
     },
   ];
 
@@ -75,35 +74,18 @@ const Sidebar = () => {
 
         <nav className="space-y-2">
           {menuItems.map((item) => (
-            item.external ? (
-              <a
-                key={item.path}
-                href={item.path}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center space-x-3 p-3 rounded-lg text-foreground 
-                         hover:bg-accent transition-colors duration-200"
-              >
-                <item.icon size={20} />
-                <span className={`transition-opacity duration-200 
-                              ${isCollapsed ? "opacity-0 hidden" : "opacity-100"}`}>
-                  {item.label}
-                </span>
-              </a>
-            ) : (
-              <Link
-                key={item.path}
-                to={item.path}
-                className="flex items-center space-x-3 p-3 rounded-lg text-foreground 
-                         hover:bg-accent transition-colors duration-200"
-              >
-                <item.icon size={20} />
-                <span className={`transition-opacity duration-200 
-                              ${isCollapsed ? "opacity-0 hidden" : "opacity-100"}`}>
-                  {item.label}
-                </span>
-              </Link>
-            )
+            <Link
+              key={item.path}
+              to={item.path}
+              className="flex items-center space-x-3 p-3 rounded-lg text-foreground 
+                       hover:bg-accent transition-colors duration-200"
+            >
+              <item.icon size={20} />
+              <span className={`transition-opacity duration-200 
+                            ${isCollapsed ? "opacity-0 hidden" : "opacity-100"}`}>
+                {item.label}
+              </span>
+            </Link>
           ))}
         </nav>
 
