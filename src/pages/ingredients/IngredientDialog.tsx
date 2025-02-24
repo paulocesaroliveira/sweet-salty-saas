@@ -29,6 +29,9 @@ type Ingredient = {
   type: 'solid' | 'liquid';
   unit: string;
   brand: string | null;
+  supplier: string | null;
+  category: string | null;
+  stock: number;
   package_cost: number;
   package_amount: number;
   cost_per_unit: number;
@@ -38,6 +41,16 @@ type IngredientDialogProps = {
   onSave: () => void;
   ingredient?: Ingredient;
 };
+
+const CATEGORIES = [
+  "Farinhas",
+  "Laticínios",
+  "Chocolates",
+  "Frutas",
+  "Gorduras",
+  "Açúcares",
+  "Outros"
+];
 
 const VALID_UNITS = {
   solid: [
@@ -60,8 +73,11 @@ export function IngredientDialog({ onSave, ingredient }: IngredientDialogProps) 
   const [type, setType] = useState<"solid" | "liquid">("solid");
   const [unit, setUnit] = useState("");
   const [brand, setBrand] = useState("");
+  const [supplier, setSupplier] = useState("");
+  const [category, setCategory] = useState("");
   const [packageCost, setPackageCost] = useState("");
   const [packageAmount, setPackageAmount] = useState("");
+  const [stock, setStock] = useState("");
 
   useEffect(() => {
     if (ingredient) {
@@ -69,8 +85,11 @@ export function IngredientDialog({ onSave, ingredient }: IngredientDialogProps) 
       setType(ingredient.type);
       setUnit(ingredient.unit);
       setBrand(ingredient.brand || "");
+      setSupplier(ingredient.supplier || "");
+      setCategory(ingredient.category || "");
       setPackageCost(ingredient.package_cost.toString());
       setPackageAmount(ingredient.package_amount.toString());
+      setStock(ingredient.stock?.toString() || "0");
     }
   }, [ingredient]);
 
@@ -90,6 +109,9 @@ export function IngredientDialog({ onSave, ingredient }: IngredientDialogProps) 
         type,
         unit,
         brand: brand || null,
+        supplier: supplier || null,
+        category: category || null,
+        stock: Number(stock) || 0,
         package_cost: Number(packageCost),
         package_amount: Number(packageAmount),
         cost_per_unit: costPerUnit,
@@ -135,8 +157,11 @@ export function IngredientDialog({ onSave, ingredient }: IngredientDialogProps) 
     setType("solid");
     setUnit("");
     setBrand("");
+    setSupplier("");
+    setCategory("");
     setPackageCost("");
     setPackageAmount("");
+    setStock("0");
   };
 
   const availableUnits = VALID_UNITS[type];
@@ -155,7 +180,7 @@ export function IngredientDialog({ onSave, ingredient }: IngredientDialogProps) 
           </Button>
         )}
       </DialogTrigger>
-      <DialogContent>
+      <DialogContent className="max-w-lg">
         <DialogHeader>
           <DialogTitle>
             {ingredient ? "Editar Ingrediente" : "Novo Ingrediente"}
@@ -165,61 +190,96 @@ export function IngredientDialog({ onSave, ingredient }: IngredientDialogProps) 
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="name">Nome</Label>
-            <Input
-              id="name"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="Ex: Farinha de Trigo"
-            />
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="type">Tipo</Label>
-            <Select value={type} onValueChange={(value: "solid" | "liquid") => {
-              setType(value);
-              setUnit(""); // Reset unit when type changes
-            }}>
-              <SelectTrigger>
-                <SelectValue placeholder="Selecione o tipo" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="solid">Sólido</SelectItem>
-                <SelectItem value="liquid">Líquido</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="unit">Unidade de Medida</Label>
-            <Select value={unit} onValueChange={setUnit}>
-              <SelectTrigger>
-                <SelectValue placeholder="Selecione uma unidade" />
-              </SelectTrigger>
-              <SelectContent>
-                {availableUnits.map((unit) => (
-                  <SelectItem key={unit.value} value={unit.value}>
-                    {unit.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="brand">Marca (opcional)</Label>
-            <Input
-              id="brand"
-              value={brand}
-              onChange={(e) => setBrand(e.target.value)}
-              placeholder="Ex: Dona Benta"
-            />
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid sm:grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="packageAmount">Quantidade na Embalagem</Label>
+              <Label htmlFor="name">Nome *</Label>
+              <Input
+                id="name"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="Ex: Farinha de Trigo"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="category">Categoria</Label>
+              <Select value={category} onValueChange={setCategory}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione uma categoria" />
+                </SelectTrigger>
+                <SelectContent>
+                  {CATEGORIES.map((cat) => (
+                    <SelectItem key={cat} value={cat}>
+                      {cat}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          <div className="grid sm:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="type">Tipo *</Label>
+              <Select 
+                value={type} 
+                onValueChange={(value: "solid" | "liquid") => {
+                  setType(value);
+                  setUnit(""); 
+                }}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione o tipo" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="solid">Sólido</SelectItem>
+                  <SelectItem value="liquid">Líquido</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="unit">Unidade de Medida *</Label>
+              <Select value={unit} onValueChange={setUnit}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione uma unidade" />
+                </SelectTrigger>
+                <SelectContent>
+                  {availableUnits.map((unit) => (
+                    <SelectItem key={unit.value} value={unit.value}>
+                      {unit.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          <div className="grid sm:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="brand">Marca</Label>
+              <Input
+                id="brand"
+                value={brand}
+                onChange={(e) => setBrand(e.target.value)}
+                placeholder="Ex: Dona Benta"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="supplier">Fornecedor</Label>
+              <Input
+                id="supplier"
+                value={supplier}
+                onChange={(e) => setSupplier(e.target.value)}
+                placeholder="Ex: Distribuidora ABC"
+              />
+            </div>
+          </div>
+
+          <div className="grid sm:grid-cols-3 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="packageAmount">Qtd. Embalagem *</Label>
               <Input
                 id="packageAmount"
                 type="number"
@@ -232,7 +292,7 @@ export function IngredientDialog({ onSave, ingredient }: IngredientDialogProps) 
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="packageCost">Custo da Embalagem (R$)</Label>
+              <Label htmlFor="packageCost">Custo da Emb. (R$) *</Label>
               <Input
                 id="packageCost"
                 type="number"
@@ -241,6 +301,19 @@ export function IngredientDialog({ onSave, ingredient }: IngredientDialogProps) 
                 value={packageCost}
                 onChange={(e) => setPackageCost(e.target.value)}
                 placeholder="Ex: 15.90"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="stock">Estoque Atual</Label>
+              <Input
+                id="stock"
+                type="number"
+                step="0.01"
+                min="0"
+                value={stock}
+                onChange={(e) => setStock(e.target.value)}
+                placeholder={`Ex: 500 ${unit}`}
               />
             </div>
           </div>
