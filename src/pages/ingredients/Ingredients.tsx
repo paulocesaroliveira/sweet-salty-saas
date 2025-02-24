@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { 
@@ -52,6 +51,9 @@ type Ingredient = {
   package_cost: number;
   package_amount: number;
   cost_per_unit: number;
+  created_at: string;
+  updated_at: string;
+  vendor_id: string;
 };
 
 const CATEGORIES = [
@@ -82,7 +84,13 @@ const Ingredients = () => {
         throw error;
       }
 
-      return data as Ingredient[];
+      return (data || []).map(ingredient => ({
+        ...ingredient,
+        supplier: ingredient.supplier || null,
+        category: ingredient.category || null,
+        stock: ingredient.stock || 0,
+        type: ingredient.type || 'solid',
+      })) as Ingredient[];
     },
   });
 
@@ -124,7 +132,6 @@ const Ingredients = () => {
 
   return (
     <div className="space-y-6">
-      {/* Cabeçalho */}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-display mb-2">Ingredientes</h1>
@@ -141,7 +148,6 @@ const Ingredients = () => {
         </div>
       </div>
 
-      {/* Cards de Ajuda */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         {helpCards.map((card, index) => (
           <Card key={index}>
@@ -160,7 +166,6 @@ const Ingredients = () => {
         ))}
       </div>
 
-      {/* Filtros */}
       <div className="flex flex-col sm:flex-row gap-4">
         <div className="flex items-center gap-2 flex-1">
           <Search className="text-muted-foreground" size={20} />
@@ -188,7 +193,6 @@ const Ingredients = () => {
         </Select>
       </div>
 
-      {/* Tabela de Ingredientes */}
       <Card>
         <Table>
           <TableHeader>

@@ -207,12 +207,15 @@ export type Database = {
       ingredients: {
         Row: {
           brand: string | null
+          category: string | null
           cost_per_unit: number
           created_at: string
           id: string
           name: string
           package_amount: number
           package_cost: number
+          stock: number | null
+          supplier: string | null
           type: string
           unit: string
           updated_at: string
@@ -220,12 +223,15 @@ export type Database = {
         }
         Insert: {
           brand?: string | null
+          category?: string | null
           cost_per_unit: number
           created_at?: string
           id?: string
           name: string
           package_amount: number
           package_cost: number
+          stock?: number | null
+          supplier?: string | null
           type?: string
           unit: string
           updated_at?: string
@@ -233,12 +239,15 @@ export type Database = {
         }
         Update: {
           brand?: string | null
+          category?: string | null
           cost_per_unit?: number
           created_at?: string
           id?: string
           name?: string
           package_amount?: number
           package_cost?: number
+          stock?: number | null
+          supplier?: string | null
           type?: string
           unit?: string
           updated_at?: string
