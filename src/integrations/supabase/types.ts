@@ -398,30 +398,39 @@ export type Database = {
       }
       packages: {
         Row: {
+          capacity: string | null
           created_at: string
           id: string
           image_url: string | null
           name: string
+          stock: number | null
+          supplier: string | null
           type: string
           unit_cost: number
           updated_at: string
           vendor_id: string
         }
         Insert: {
+          capacity?: string | null
           created_at?: string
           id?: string
           image_url?: string | null
           name: string
+          stock?: number | null
+          supplier?: string | null
           type: string
           unit_cost: number
           updated_at?: string
           vendor_id: string
         }
         Update: {
+          capacity?: string | null
           created_at?: string
           id?: string
           image_url?: string | null
           name?: string
+          stock?: number | null
+          supplier?: string | null
           type?: string
           unit_cost?: number
           updated_at?: string

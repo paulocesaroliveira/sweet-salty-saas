@@ -59,11 +59,13 @@ const Packages = () => {
         throw error;
       }
 
+      // Ensure all fields are properly typed with default values
       return (data || []).map(pkg => ({
         ...pkg,
         supplier: pkg.supplier || null,
         capacity: pkg.capacity || null,
         stock: pkg.stock || 0,
+        image_url: pkg.image_url || null,
       })) as Package[];
     },
   });
