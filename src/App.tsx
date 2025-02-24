@@ -10,6 +10,7 @@ import { AuthProvider } from "./contexts/AuthContext";
 import { ProtectedRoute } from "./components/auth/ProtectedRoute";
 
 // Pages
+import Index from "./pages/Index";
 import Login from "./pages/auth/Login";
 import Dashboard from "./pages/dashboard/Dashboard";
 import Products from "./pages/products/Products";
@@ -43,7 +44,7 @@ const App = () => {
           <TooltipProvider>
             <BrowserRouter>
               <Routes>
-                <Route path="/" element={<Navigate to="/login" replace />} />
+                <Route path="/" element={<Index />} />
                 <Route path="/login" element={<Login />} />
                 <Route path="/store/:vendorId" element={<Store />} />
                 
