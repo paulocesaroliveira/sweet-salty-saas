@@ -20,14 +20,29 @@ type Package = {
   id: string;
   name: string;
   type: string;
+  capacity: string | null;
+  supplier: string | null;
+  stock: number;
   unit_cost: number;
   image_url: string | null;
+  created_at: string;
+  updated_at: string;
+  vendor_id: string;
 };
 
 type PackageDialogProps = {
   onSave: () => void;
   package?: Package;
 };
+
+const PACKAGE_TYPES = [
+  "Caixa",
+  "Pote",
+  "Saco",
+  "Bandeja",
+  "Embalagem Térmica",
+  "Outro"
+];
 
 export function PackageDialog({ onSave, package: pkg }: PackageDialogProps) {
   const [open, setOpen] = useState(false);
@@ -36,7 +51,10 @@ export function PackageDialog({ onSave, package: pkg }: PackageDialogProps) {
 
   const [name, setName] = useState("");
   const [type, setType] = useState("");
+  const [capacity, setCapacity] = useState("");
+  const [supplier, setSupplier] = useState("");
   const [unitCost, setUnitCost] = useState("");
+  const [stock, setStock] = useState("");
   const [image, setImage] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
 
@@ -44,7 +62,10 @@ export function PackageDialog({ onSave, package: pkg }: PackageDialogProps) {
     if (pkg) {
       setName(pkg.name);
       setType(pkg.type);
+      setCapacity(pkg.capacity || "");
+      setSupplier(pkg.supplier || "");
       setUnitCost(pkg.unit_cost.toString());
+      setStock(pkg.stock?.toString() || "0");
       setImagePreview(pkg.image_url);
     }
   }, [pkg]);
@@ -90,7 +111,10 @@ export function PackageDialog({ onSave, package: pkg }: PackageDialogProps) {
       const data = {
         name,
         type,
+        capacity: capacity || null,
+        supplier: supplier || null,
         unit_cost: Number(unitCost),
+        stock: Number(stock) || 0,
         image_url: imageUrl,
         vendor_id: user?.id,
       };
@@ -132,7 +156,10 @@ export function PackageDialog({ onSave, package: pkg }: PackageDialogProps) {
   const resetForm = () => {
     setName("");
     setType("");
+    setCapacity("");
+    setSupplier("");
     setUnitCost("");
+    setStock("0");
     setImage(null);
     setImagePreview(null);
   };
@@ -161,37 +188,82 @@ export function PackageDialog({ onSave, package: pkg }: PackageDialogProps) {
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="name">Nome</Label>
-            <Input
-              id="name"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="Ex: Caixa para Bolo"
-            />
+          <div className="grid sm:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="name">Nome *</Label>
+              <Input
+                id="name"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="Ex: Caixa para Bolo"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="type">Tipo *</Label>
+              <Input
+                id="type"
+                value={type}
+                onChange={(e) => setType(e.target.value)}
+                placeholder="Ex: Caixa, Pote, Saco"
+                list="package-types"
+              />
+              <datalist id="package-types">
+                {PACKAGE_TYPES.map(type => (
+                  <option key={type} value={type} />
+                ))}
+              </datalist>
+            </div>
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="type">Tipo</Label>
-            <Input
-              id="type"
-              value={type}
-              onChange={(e) => setType(e.target.value)}
-              placeholder="Ex: Caixa, Pote, Saco"
-            />
+          <div className="grid sm:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="capacity">Capacidade</Label>
+              <Input
+                id="capacity"
+                value={capacity}
+                onChange={(e) => setCapacity(e.target.value)}
+                placeholder="Ex: 500ml, 6 unidades"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="supplier">Fornecedor</Label>
+              <Input
+                id="supplier"
+                value={supplier}
+                onChange={(e) => setSupplier(e.target.value)}
+                placeholder="Ex: Embalagens ABC"
+              />
+            </div>
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="unitCost">Custo Unitário (R$)</Label>
-            <Input
-              id="unitCost"
-              type="number"
-              step="0.01"
-              min="0"
-              value={unitCost}
-              onChange={(e) => setUnitCost(e.target.value)}
-              placeholder="Ex: 2.50"
-            />
+          <div className="grid sm:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="unitCost">Custo Unitário (R$) *</Label>
+              <Input
+                id="unitCost"
+                type="number"
+                step="0.01"
+                min="0"
+                value={unitCost}
+                onChange={(e) => setUnitCost(e.target.value)}
+                placeholder="Ex: 2.50"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="stock">Estoque Atual</Label>
+              <Input
+                id="stock"
+                type="number"
+                step="1"
+                min="0"
+                value={stock}
+                onChange={(e) => setStock(e.target.value)}
+                placeholder="Ex: 100"
+              />
+            </div>
           </div>
 
           <div className="space-y-2">
