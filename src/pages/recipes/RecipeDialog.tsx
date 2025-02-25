@@ -1,6 +1,6 @@
 
 import { useEffect, useState } from "react";
-import { PlusCircle, X } from "lucide-react";
+import { PlusCircle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
@@ -87,12 +87,20 @@ export function RecipeDialog({ recipeId, trigger, onSave }: RecipeDialogProps) {
         servings: Number(servings),
         category: category || null,
         vendor_id: user?.id,
+        total_cost: 0, // Inicialmente zero, será atualizado pelo trigger quando ingredientes forem adicionados
+        packaging_cost: 0, // Inicialmente zero, será atualizado pelo trigger
+        cost_per_unit: 0, // Inicialmente zero, será atualizado pelo trigger
       };
 
       if (recipeId) {
         const { error } = await supabase
           .from("recipes")
-          .update(recipeData)
+          .update({
+            name: recipeData.name,
+            description: recipeData.description,
+            servings: recipeData.servings,
+            category: recipeData.category,
+          })
           .eq("id", recipeId);
 
         if (error) throw error;
@@ -100,7 +108,7 @@ export function RecipeDialog({ recipeId, trigger, onSave }: RecipeDialogProps) {
       } else {
         const { error } = await supabase
           .from("recipes")
-          .insert([recipeData]);
+          .insert(recipeData);
 
         if (error) throw error;
         toast.success("Receita criada com sucesso");
