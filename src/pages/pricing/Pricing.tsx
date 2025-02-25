@@ -5,31 +5,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { PlusCircle } from "lucide-react";
 import { ProductPricingDialog } from "./components/ProductPricingDialog";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-
-type ProductPricing = {
-  id: string;
-  recipe_id: string;
-  recipe_cost: number;
-  labor_minutes: number;
-  labor_cost: number;
-  packaging_cost: number;
-  fixed_costs_share: number;
-  total_cost: number;
-  profit_margin: number;
-  suggested_price: number;
-  final_price: number;
-  yield_amount: number;
-  unit_cost: number;
-  unit_price: number;
-};
+import { PricingHelpCards } from "./components/PricingHelpCards";
+import { PricingTable } from "./components/PricingTable";
 
 export default function Pricing() {
   const [selectedPricing, setSelectedPricing] = useState<string | null>(null);
@@ -43,13 +20,14 @@ export default function Pricing() {
         .select(`
           *,
           recipes:recipes (
-            name
+            name,
+            category
           )
         `)
         .order("created_at", { ascending: false });
 
       if (error) throw error;
-      return data as (ProductPricing & { recipes: { name: string } })[];
+      return data;
     },
   });
 
@@ -57,9 +35,9 @@ export default function Pricing() {
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Precificação</h1>
+          <h1 className="text-3xl font-bold tracking-tight">Precificação Inteligente</h1>
           <p className="text-muted-foreground">
-            Gerencie os preços dos seus produtos calculando custos e margens de lucro.
+            Calcule o preço ideal dos seus produtos considerando todos os custos envolvidos.
           </p>
         </div>
 
@@ -69,41 +47,14 @@ export default function Pricing() {
         </Button>
       </div>
 
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead>Receita</TableHead>
-            <TableHead>Custo Total</TableHead>
-            <TableHead>Margem</TableHead>
-            <TableHead>Preço Final</TableHead>
-            <TableHead>Preço Unitário</TableHead>
-            <TableHead className="w-24">Ações</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {pricings?.map((pricing) => (
-            <TableRow key={pricing.id}>
-              <TableCell>{pricing.recipes.name}</TableCell>
-              <TableCell>R$ {pricing.total_cost.toFixed(2)}</TableCell>
-              <TableCell>{pricing.profit_margin}%</TableCell>
-              <TableCell>R$ {pricing.final_price.toFixed(2)}</TableCell>
-              <TableCell>R$ {pricing.unit_price.toFixed(2)}</TableCell>
-              <TableCell>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => {
-                    setSelectedPricing(pricing.id);
-                    setIsDialogOpen(true);
-                  }}
-                >
-                  Editar
-                </Button>
-              </TableCell>
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
+      <PricingHelpCards />
+      <PricingTable 
+        pricings={pricings}
+        onEdit={(id) => {
+          setSelectedPricing(id);
+          setIsDialogOpen(true);
+        }}
+      />
 
       <ProductPricingDialog
         pricingId={selectedPricing}

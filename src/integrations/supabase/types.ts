@@ -440,13 +440,20 @@ export type Database = {
       }
       product_pricing: {
         Row: {
+          category: string | null
+          competitor_price: number | null
           created_at: string
+          discount_percentage: number | null
           final_price: number
           fixed_costs_share: number
           id: string
           labor_cost: number
           labor_minutes: number
+          markup: number | null
+          min_price: number | null
+          notes: string | null
           packaging_cost: number
+          pricing_strategy: string | null
           profit_margin: number
           recipe_cost: number
           recipe_id: string
@@ -459,13 +466,20 @@ export type Database = {
           yield_amount: number
         }
         Insert: {
+          category?: string | null
+          competitor_price?: number | null
           created_at?: string
+          discount_percentage?: number | null
           final_price: number
           fixed_costs_share: number
           id?: string
           labor_cost: number
           labor_minutes: number
+          markup?: number | null
+          min_price?: number | null
+          notes?: string | null
           packaging_cost: number
+          pricing_strategy?: string | null
           profit_margin: number
           recipe_cost: number
           recipe_id: string
@@ -478,13 +492,20 @@ export type Database = {
           yield_amount: number
         }
         Update: {
+          category?: string | null
+          competitor_price?: number | null
           created_at?: string
+          discount_percentage?: number | null
           final_price?: number
           fixed_costs_share?: number
           id?: string
           labor_cost?: number
           labor_minutes?: number
+          markup?: number | null
+          min_price?: number | null
+          notes?: string | null
           packaging_cost?: number
+          pricing_strategy?: string | null
           profit_margin?: number
           recipe_cost?: number
           recipe_id?: string
