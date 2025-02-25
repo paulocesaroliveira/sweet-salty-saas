@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { 
@@ -9,7 +8,8 @@ import {
   Calculator,
   PackageOpen,
   Copy,
-  Tag
+  Tag,
+  Pencil
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -304,8 +304,13 @@ const Recipes = () => {
                       <ClipboardList size={16} />
                     </Button>
                     <RecipeDialog
-                      recipe={recipe}
+                      recipeId={recipe.id}
                       onSave={refetch}
+                      trigger={
+                        <Button variant="ghost" size="icon" title="Editar receita">
+                          <Pencil size={16} />
+                        </Button>
+                      }
                     />
                     <Button
                       variant="ghost"
