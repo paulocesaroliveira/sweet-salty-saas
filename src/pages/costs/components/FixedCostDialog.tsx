@@ -33,7 +33,7 @@ export function FixedCostDialog({ costId, open, onClose, onSave }: FixedCostDial
   const [isLoading, setIsLoading] = useState(false);
   const [name, setName] = useState("");
   const [amount, setAmount] = useState("");
-  const [frequency, setFrequency] = useState("monthly");
+  const [frequency, setFrequency] = useState<string>("monthly");
 
   const { data: cost } = useQuery({
     queryKey: ["fixed-cost", costId],
@@ -82,12 +82,14 @@ export function FixedCostDialog({ costId, open, onClose, onSave }: FixedCostDial
         if (error) throw error;
         toast.success("Custo fixo atualizado com sucesso!");
       } else {
-        const { error } = await supabase.from("fixed_costs").insert({
-          name,
-          amount: Number(amount),
-          frequency,
-          vendor_id: user?.id,
-        });
+        const { error } = await supabase
+          .from("fixed_costs")
+          .insert({
+            name,
+            amount: Number(amount),
+            frequency,
+            vendor_id: user?.id,
+          });
 
         if (error) throw error;
         toast.success("Custo fixo adicionado com sucesso!");
@@ -144,6 +146,8 @@ export function FixedCostDialog({ costId, open, onClose, onSave }: FixedCostDial
                 <SelectValue placeholder="Selecione a frequência" />
               </SelectTrigger>
               <SelectContent>
+                <SelectItem value="daily">Diário</SelectItem>
+                <SelectItem value="weekly">Semanal</SelectItem>
                 <SelectItem value="monthly">Mensal</SelectItem>
                 <SelectItem value="yearly">Anual</SelectItem>
               </SelectContent>
