@@ -652,27 +652,87 @@ export type Database = {
           },
         ]
       }
-      recipes: {
+      recipe_packages: {
         Row: {
           created_at: string
           id: string
+          package_cost: number
+          package_id: string | null
+          quantity: number
+          recipe_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          package_cost?: number
+          package_id?: string | null
+          quantity?: number
+          recipe_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          package_cost?: number
+          package_id?: string | null
+          quantity?: number
+          recipe_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "recipe_packages_package_id_fkey"
+            columns: ["package_id"]
+            isOneToOne: false
+            referencedRelation: "packages"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "recipe_packages_recipe_id_fkey"
+            columns: ["recipe_id"]
+            isOneToOne: false
+            referencedRelation: "recipes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      recipes: {
+        Row: {
+          category: string | null
+          cost_per_unit: number | null
+          created_at: string
+          description: string | null
+          id: string
+          image_url: string | null
           name: string
+          packaging_cost: number | null
+          servings: number | null
           total_cost: number
           updated_at: string
           vendor_id: string
         }
         Insert: {
+          category?: string | null
+          cost_per_unit?: number | null
           created_at?: string
+          description?: string | null
           id?: string
+          image_url?: string | null
           name: string
+          packaging_cost?: number | null
+          servings?: number | null
           total_cost: number
           updated_at?: string
           vendor_id: string
         }
         Update: {
+          category?: string | null
+          cost_per_unit?: number | null
           created_at?: string
+          description?: string | null
           id?: string
+          image_url?: string | null
           name?: string
+          packaging_cost?: number | null
+          servings?: number | null
           total_cost?: number
           updated_at?: string
           vendor_id?: string
