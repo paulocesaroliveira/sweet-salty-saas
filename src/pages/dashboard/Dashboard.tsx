@@ -1,98 +1,153 @@
 
-import { Package, ShoppingCart, TrendingUp } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Calendar, Package, ShoppingCart, TrendingUp, Clock, AlertTriangle } from "lucide-react";
+import { formatCurrency } from "@/lib/utils";
+import { RevenueChart } from "./components/RevenueChart";
+import { RecentOrders } from "./components/RecentOrders";
+import { PopularProducts } from "./components/PopularProducts";
+import { OrderStatusChart } from "./components/OrderStatusChart";
 
-const StatCard = ({ icon: Icon, label, value, color }: { 
-  icon: any, 
-  label: string, 
-  value: string,
-  color: string
+const StatCard = ({ 
+  icon: Icon, 
+  label, 
+  value, 
+  description, 
+  trend,
+  color 
+}: { 
+  icon: any;
+  label: string;
+  value: string;
+  description?: string;
+  trend?: "up" | "down";
+  color?: string;
 }) => (
-  <div className="stats-card">
-    <div className={`stats-icon ${color}`}>
-      <Icon className="text-white" size={24} />
-    </div>
-    <div>
-      <p className="text-neutral-600 mb-1">{label}</p>
-      <p className="text-2xl font-semibold">{value}</p>
-    </div>
-  </div>
+  <Card>
+    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+      <CardTitle className="text-sm font-medium">
+        {label}
+      </CardTitle>
+      <div className={`w-8 h-8 rounded-lg ${color || 'bg-primary/10'} flex items-center justify-center`}>
+        <Icon className={color ? 'text-white' : 'text-primary'} size={18} />
+      </div>
+    </CardHeader>
+    <CardContent>
+      <div className="text-2xl font-bold">{value}</div>
+      {description && (
+        <p className="text-xs text-muted-foreground mt-1">
+          {description}
+        </p>
+      )}
+      {trend && (
+        <div className={`text-xs mt-1 ${
+          trend === 'up' ? 'text-green-600' : 'text-red-600'
+        }`}>
+          {trend === 'up' ? '↑' : '↓'} vs. mês anterior
+        </div>
+      )}
+    </CardContent>
+  </Card>
 );
 
-const Dashboard = () => {
+export default function Dashboard() {
+  const { data: stats } = useQuery({
+    queryKey: ["dashboard-stats"],
+    queryFn: async () => {
+      const today = new Date();
+      const firstDayOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+      
+      const { data: monthOrders, error: ordersError } = await supabase
+        .from("orders")
+        .select("*")
+        .gte("created_at", firstDayOfMonth.toISOString())
+        .lte("created_at", today.toISOString());
+
+      if (ordersError) throw ordersError;
+
+      const totalRevenue = monthOrders?.reduce((sum, order) => sum + order.total_amount, 0) || 0;
+      const totalProfit = monthOrders?.reduce((sum, order) => sum + (order.estimated_profit || 0), 0) || 0;
+      const pendingOrders = monthOrders?.filter(order => 
+        order.delivery_status === 'pending' || order.delivery_status === 'preparing'
+      ).length || 0;
+      
+      return {
+        totalRevenue,
+        totalProfit,
+        totalOrders: monthOrders?.length || 0,
+        pendingOrders,
+        avgTicket: monthOrders?.length ? totalRevenue / monthOrders.length : 0
+      };
+    },
+  });
+
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-display mb-2">Dashboard</h1>
-        <p className="text-neutral-600">Acompanhe seus resultados</p>
+        <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
+        <p className="text-muted-foreground">
+          Acompanhe seus resultados e pedidos em tempo real.
+        </p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        <StatCard 
+          icon={TrendingUp}
+          label="Faturamento do Mês"
+          value={formatCurrency(stats?.totalRevenue || 0)}
+          description="Receita total do período"
+          trend="up"
+          color="bg-emerald-500"
+        />
         <StatCard 
           icon={ShoppingCart}
-          label="Pedidos Hoje"
-          value="12"
-          color="bg-pastel-pink"
+          label="Total de Pedidos"
+          value={String(stats?.totalOrders || 0)}
+          description={`${stats?.pendingOrders || 0} pedidos pendentes`}
+          color="bg-blue-500"
         />
         <StatCard 
           icon={Package}
-          label="Produtos Ativos"
-          value="45"
-          color="bg-pastel-blue"
+          label="Lucro Estimado"
+          value={formatCurrency(stats?.totalProfit || 0)}
+          description="Baseado nas margens definidas"
+          trend="up"
+          color="bg-violet-500"
         />
         <StatCard 
-          icon={TrendingUp}
-          label="Vendas do Mês"
-          value="R$ 3.450"
-          color="bg-pastel-yellow"
+          icon={Clock}
+          label="Ticket Médio"
+          value={formatCurrency(stats?.avgTicket || 0)}
+          description="Valor médio por pedido"
+          color="bg-amber-500"
         />
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="card">
-          <h3 className="font-display text-lg mb-4">Últimos Pedidos</h3>
-          <div className="space-y-3">
-            {[1, 2, 3].map((i) => (
-              <div 
-                key={i} 
-                className="flex items-center justify-between p-4 bg-neutral-50/50 
-                         rounded-xl transition-colors hover:bg-neutral-50"
-              >
-                <div>
-                  <p className="font-medium">Pedido #{i}</p>
-                  <p className="text-sm text-neutral-600">2 items • R$ 45,00</p>
-                </div>
-                <span className="px-3 py-1 bg-pastel-yellow/20 text-yellow-700 text-sm rounded-full">
-                  Em preparo
-                </span>
-              </div>
-            ))}
-          </div>
-        </div>
+      <div className="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-7">
+        <Card className="col-span-full lg:col-span-4">
+          <CardHeader>
+            <CardTitle>Faturamento</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <RevenueChart />
+          </CardContent>
+        </Card>
 
-        <div className="card">
-          <h3 className="font-display text-lg mb-4">Produtos Populares</h3>
-          <div className="space-y-3">
-            {[1, 2, 3].map((i) => (
-              <div 
-                key={i} 
-                className="flex items-center justify-between p-4 bg-neutral-50/50 
-                         rounded-xl transition-colors hover:bg-neutral-50"
-              >
-                <div className="flex items-center space-x-4">
-                  <div className="w-12 h-12 bg-pastel-pink/20 rounded-xl"></div>
-                  <div>
-                    <p className="font-medium">Produto {i}</p>
-                    <p className="text-sm text-neutral-600">Vendidos: 24</p>
-                  </div>
-                </div>
-                <p className="font-medium">R$ 25,00</p>
-              </div>
-            ))}
-          </div>
-        </div>
+        <Card className="col-span-full lg:col-span-3">
+          <CardHeader>
+            <CardTitle>Status dos Pedidos</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <OrderStatusChart />
+          </CardContent>
+        </Card>
+      </div>
+
+      <div className="grid gap-4 grid-cols-1 md:grid-cols-2">
+        <RecentOrders />
+        <PopularProducts />
       </div>
     </div>
   );
-};
-
-export default Dashboard;
+}

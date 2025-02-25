@@ -338,7 +338,13 @@ export type Database = {
           customer_name: string
           customer_phone: string | null
           delivery_date: string | null
+          delivery_status: string | null
+          estimated_profit: number | null
           id: string
+          internal_notes: string | null
+          payment_status: string | null
+          priority: boolean | null
+          profit_margin: number | null
           status: string | null
           total_amount: number
           updated_at: string
@@ -352,7 +358,13 @@ export type Database = {
           customer_name: string
           customer_phone?: string | null
           delivery_date?: string | null
+          delivery_status?: string | null
+          estimated_profit?: number | null
           id?: string
+          internal_notes?: string | null
+          payment_status?: string | null
+          priority?: boolean | null
+          profit_margin?: number | null
           status?: string | null
           total_amount: number
           updated_at?: string
@@ -366,7 +378,13 @@ export type Database = {
           customer_name?: string
           customer_phone?: string | null
           delivery_date?: string | null
+          delivery_status?: string | null
+          estimated_profit?: number | null
           id?: string
+          internal_notes?: string | null
+          payment_status?: string | null
+          priority?: boolean | null
+          profit_margin?: number | null
           status?: string | null
           total_amount?: number
           updated_at?: string
