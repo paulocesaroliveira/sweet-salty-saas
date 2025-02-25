@@ -29,13 +29,31 @@ import {
 import { toast } from "sonner";
 import { PackageDialog } from "./PackageDialog";
 
+const helpCards = [
+  {
+    icon: Box,
+    title: "Como Cadastrar Embalagens",
+    description: "Clique em 'Nova Embalagem' e preencha as informações como nome, capacidade e custo unitário."
+  },
+  {
+    icon: Calculator,
+    title: "Precificação de Produtos",
+    description: "As embalagens cadastradas estarão disponíveis ao calcular o custo final dos seus produtos."
+  },
+  {
+    icon: Store,
+    title: "Controle de Estoque",
+    description: "Gerencie seu estoque de embalagens para nunca ficar sem produto por falta de embalagem."
+  }
+];
+
 type Package = {
   id: string;
   name: string;
   type: string;
   capacity: string | null;
   supplier: string | null;
-  stock: number;
+  stock: number | null;
   unit_cost: number;
   image_url: string | null;
   created_at: string;
@@ -59,34 +77,9 @@ const Packages = () => {
         throw error;
       }
 
-      // Ensure all fields are properly typed with default values
-      return (data || []).map(pkg => ({
-        ...pkg,
-        supplier: pkg.supplier || null,
-        capacity: pkg.capacity || null,
-        stock: pkg.stock || 0,
-        image_url: pkg.image_url || null,
-      })) as Package[];
+      return (data || []) as Package[];
     },
   });
-
-  const helpCards = [
-    {
-      icon: Box,
-      title: "Como Cadastrar Embalagens",
-      description: "Clique em 'Nova Embalagem' e preencha as informações como nome, capacidade e custo unitário."
-    },
-    {
-      icon: Calculator,
-      title: "Precificação de Produtos",
-      description: "As embalagens cadastradas estarão disponíveis ao calcular o custo final dos seus produtos."
-    },
-    {
-      icon: Store,
-      title: "Controle de Estoque",
-      description: "Gerencie seu estoque de embalagens para nunca ficar sem produto por falta de embalagem."
-    }
-  ];
 
   const filteredPackages = packages?.filter(pkg =>
     pkg.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
