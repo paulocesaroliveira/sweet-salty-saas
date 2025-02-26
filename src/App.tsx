@@ -25,6 +25,7 @@ import Packages from "./pages/packages/Packages";
 import Costs from "./pages/costs/Costs";
 import Pricing from "./pages/pricing/Pricing";
 import Reports from "./pages/reports/Reports";
+import Sales from "./pages/sales/Sales";
 import NotFound from "./pages/NotFound";
 
 const App = () => {
@@ -57,6 +58,7 @@ const App = () => {
                   }
                 >
                   <Route path="/dashboard" element={<Dashboard />} />
+                  <Route path="/sales" element={<Sales />} />
                   <Route path="/products" element={<Products />} />
                   <Route path="/ingredients" element={<Ingredients />} />
                   <Route path="/recipes" element={<Recipes />} />

@@ -40,7 +40,7 @@ const Sidebar = () => {
       group: "Principais",
       items: [
         { icon: LayoutDashboard, label: "Dashboard", path: "/dashboard" },
-        { icon: Receipt, label: "Vendas", path: "/reports" },
+        { icon: Receipt, label: "Vendas", path: "/sales" },
         { icon: ShoppingCart, label: "Pedidos", path: "/orders" },
       ]
     },
