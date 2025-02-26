@@ -331,6 +331,7 @@ export type Database = {
       }
       orders: {
         Row: {
+          additional_fees: number | null
           address_id: string | null
           created_at: string
           customer_email: string | null
@@ -339,18 +340,26 @@ export type Database = {
           customer_phone: string | null
           delivery_date: string | null
           delivery_status: string | null
+          discount_amount: number | null
           estimated_profit: number | null
           id: string
           internal_notes: string | null
+          payment_method: string | null
           payment_status: string | null
           priority: boolean | null
           profit_margin: number | null
+          receipt_url: string | null
+          sale_origin: string | null
+          sale_type: string | null
+          seller_id: string | null
+          seller_notes: string | null
           status: string | null
           total_amount: number
           updated_at: string
           vendor_id: string
         }
         Insert: {
+          additional_fees?: number | null
           address_id?: string | null
           created_at?: string
           customer_email?: string | null
@@ -359,18 +368,26 @@ export type Database = {
           customer_phone?: string | null
           delivery_date?: string | null
           delivery_status?: string | null
+          discount_amount?: number | null
           estimated_profit?: number | null
           id?: string
           internal_notes?: string | null
+          payment_method?: string | null
           payment_status?: string | null
           priority?: boolean | null
           profit_margin?: number | null
+          receipt_url?: string | null
+          sale_origin?: string | null
+          sale_type?: string | null
+          seller_id?: string | null
+          seller_notes?: string | null
           status?: string | null
           total_amount: number
           updated_at?: string
           vendor_id: string
         }
         Update: {
+          additional_fees?: number | null
           address_id?: string | null
           created_at?: string
           customer_email?: string | null
@@ -379,12 +396,19 @@ export type Database = {
           customer_phone?: string | null
           delivery_date?: string | null
           delivery_status?: string | null
+          discount_amount?: number | null
           estimated_profit?: number | null
           id?: string
           internal_notes?: string | null
+          payment_method?: string | null
           payment_status?: string | null
           priority?: boolean | null
           profit_margin?: number | null
+          receipt_url?: string | null
+          sale_origin?: string | null
+          sale_type?: string | null
+          seller_id?: string | null
+          seller_notes?: string | null
           status?: string | null
           total_amount?: number
           updated_at?: string
