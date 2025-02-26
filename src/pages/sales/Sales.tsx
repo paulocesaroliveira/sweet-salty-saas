@@ -1,7 +1,7 @@
-
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { SaleModal } from "./components/SaleModal";
 import { SalesTable } from "./components/SalesTable";
+import { SalesAnalytics } from "./components/SalesAnalytics";
 import { 
   DollarSign, 
   ShoppingBag, 
@@ -10,8 +10,44 @@ import {
   ArrowUpRight,
   ArrowDownRight
 } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
+import { formatCurrency } from "@/lib/utils";
 
 export default function Sales() {
+  const { user } = useAuth();
+
+  const { data: metrics } = useQuery({
+    queryKey: ["sales-metrics"],
+    queryFn: async () => {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      
+      const { data: todaySales } = await supabase
+        .from("orders")
+        .select("total_amount")
+        .eq("vendor_id", user?.id)
+        .gte("created_at", today.toISOString());
+
+      const { data: yesterdaySales } = await supabase
+        .from("orders")
+        .select("total_amount")
+        .eq("vendor_id", user?.id)
+        .gte("created_at", new Date(today.getTime() - 86400000).toISOString())
+        .lt("created_at", today.toISOString());
+
+      const todayTotal = todaySales?.reduce((sum, order) => sum + order.total_amount, 0) || 0;
+      const yesterdayTotal = yesterdaySales?.reduce((sum, order) => sum + order.total_amount, 0) || 0;
+      const percentageChange = yesterdayTotal ? ((todayTotal - yesterdayTotal) / yesterdayTotal) * 100 : 0;
+
+      return {
+        todayTotal,
+        percentageChange,
+      };
+    },
+  });
+
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
@@ -31,10 +67,16 @@ export default function Sales() {
             <DollarSign className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">R$ 0,00</div>
+            <div className="text-2xl font-bold">
+              {formatCurrency(metrics?.todayTotal || 0)}
+            </div>
             <p className="text-xs text-muted-foreground mt-1">
-              <ArrowUpRight className="h-4 w-4 text-green-500 inline mr-1" />
-              +0% em relação a ontem
+              {metrics?.percentageChange >= 0 ? (
+                <ArrowUpRight className="h-4 w-4 text-green-500 inline mr-1" />
+              ) : (
+                <ArrowDownRight className="h-4 w-4 text-red-500 inline mr-1" />
+              )}
+              {metrics?.percentageChange.toFixed(1)}% em relação a ontem
             </p>
           </CardContent>
         </Card>
@@ -80,7 +122,10 @@ export default function Sales() {
         </Card>
       </div>
 
-      {/* Lista de vendas */}
+      <div className="grid gap-4 md:grid-cols-2">
+        <SalesAnalytics />
+      </div>
+
       <Card>
         <CardHeader>
           <CardTitle>Histórico de Vendas</CardTitle>

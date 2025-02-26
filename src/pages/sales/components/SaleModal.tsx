@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import {
   Dialog,
@@ -20,9 +19,67 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { toast } from "react-toastify";
+import { supabase } from "@/lib/supabase";
 
 export function SaleModal() {
   const [open, setOpen] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [formData, setFormData] = useState({
+    product: "",
+    quantity: "",
+    price: "",
+    payment: "",
+    origin: "",
+    customer: "",
+    discount: "",
+    notes: "",
+  });
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsLoading(true);
+
+    try {
+      const { data, error } = await supabase
+        .from("orders")
+        .insert({
+          product_name: formData.product,
+          quantity: Number(formData.quantity),
+          unit_price: Number(formData.price),
+          total_amount: Number(formData.quantity) * Number(formData.price),
+          payment_method: formData.payment,
+          sale_origin: formData.origin,
+          customer_name: formData.customer,
+          discount_amount: Number(formData.discount),
+          seller_notes: formData.notes,
+          status: "pending",
+          payment_status: "pending",
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      toast.success("Venda registrada com sucesso!");
+      setOpen(false);
+      setFormData({
+        product: "",
+        quantity: "",
+        price: "",
+        payment: "",
+        origin: "",
+        customer: "",
+        discount: "",
+        notes: "",
+      });
+    } catch (error) {
+      toast.error("Erro ao registrar venda");
+      console.error(error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -49,6 +106,8 @@ export function SaleModal() {
               id="product"
               placeholder="Nome do produto"
               className="col-span-3"
+              value={formData.product}
+              onChange={(e) => setFormData({ ...formData, product: e.target.value })}
             />
           </div>
 
@@ -61,6 +120,8 @@ export function SaleModal() {
               type="number"
               placeholder="0"
               className="col-span-3"
+              value={formData.quantity}
+              onChange={(e) => setFormData({ ...formData, quantity: e.target.value })}
             />
           </div>
 
@@ -73,6 +134,8 @@ export function SaleModal() {
               type="number"
               placeholder="0,00"
               className="col-span-3"
+              value={formData.price}
+              onChange={(e) => setFormData({ ...formData, price: e.target.value })}
             />
           </div>
 
@@ -118,6 +181,8 @@ export function SaleModal() {
               id="customer"
               placeholder="Nome do cliente (opcional)"
               className="col-span-3"
+              value={formData.customer}
+              onChange={(e) => setFormData({ ...formData, customer: e.target.value })}
             />
           </div>
 
@@ -130,6 +195,8 @@ export function SaleModal() {
               type="number"
               placeholder="0"
               className="col-span-3"
+              value={formData.discount}
+              onChange={(e) => setFormData({ ...formData, discount: e.target.value })}
             />
           </div>
 
@@ -141,6 +208,8 @@ export function SaleModal() {
               id="notes"
               placeholder="Observações adicionais"
               className="col-span-3"
+              value={formData.notes}
+              onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
             />
           </div>
         </div>
@@ -149,7 +218,9 @@ export function SaleModal() {
           <Button variant="outline" onClick={() => setOpen(false)}>
             Cancelar
           </Button>
-          <Button type="submit">Salvar Venda</Button>
+          <Button type="submit" onClick={handleSubmit}>
+            {isLoading ? "Salvando..." : "Salvar Venda"}
+          </Button>
         </div>
       </DialogContent>
     </Dialog>
