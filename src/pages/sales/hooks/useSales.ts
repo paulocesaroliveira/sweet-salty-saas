@@ -3,6 +3,16 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 
+export interface Sale {
+  id: string;
+  created_at: string;
+  customer_name: string;
+  total_amount: number;
+  payment_method: string;
+  status: string;
+  payment_status: string;
+}
+
 export function useSales(filters: {
   startDate?: Date;
   endDate?: Date;
@@ -13,13 +23,12 @@ export function useSales(filters: {
   const { user } = useAuth();
 
   return useQuery({
-    queryKey: ["sales", filters],
+    queryKey: ["sales", filters, user?.id],
     queryFn: async () => {
       let query = supabase
         .from("orders")
         .select(`
-          *,
-          customer:customers(full_name)
+          id, created_at, customer_name, total_amount, payment_method, status, payment_status
         `)
         .eq("vendor_id", user?.id);
 
@@ -44,8 +53,13 @@ export function useSales(filters: {
 
       const { data, error } = await query.order("created_at", { ascending: false });
       
-      if (error) throw error;
-      return data;
+      if (error) {
+        console.error("Error fetching sales:", error);
+        throw error;
+      }
+      
+      return data as Sale[];
     },
+    enabled: !!user?.id,
   });
 }

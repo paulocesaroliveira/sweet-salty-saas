@@ -15,28 +15,48 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { formatCurrency } from "@/lib/utils";
+import { useEffect } from "react";
 
 export default function Sales() {
   const { user } = useAuth();
 
-  const { data: metrics } = useQuery({
-    queryKey: ["sales-metrics"],
+  // Log user and authentication state for debugging
+  useEffect(() => {
+    console.log("Auth state in Sales.tsx:", { user });
+  }, [user]);
+
+  const { data: metrics, isLoading: metricsLoading, error: metricsError } = useQuery({
+    queryKey: ["sales-metrics", user?.id],
     queryFn: async () => {
+      console.log("Fetching sales metrics for user:", user?.id);
+      
       const today = new Date();
       today.setHours(0, 0, 0, 0);
       
-      const { data: todaySales } = await supabase
+      const { data: todaySales, error: todayError } = await supabase
         .from("orders")
         .select("total_amount")
         .eq("vendor_id", user?.id)
         .gte("created_at", today.toISOString());
 
-      const { data: yesterdaySales } = await supabase
+      if (todayError) {
+        console.error("Error fetching today's sales:", todayError);
+        throw todayError;
+      }
+
+      const { data: yesterdaySales, error: yesterdayError } = await supabase
         .from("orders")
         .select("total_amount")
         .eq("vendor_id", user?.id)
         .gte("created_at", new Date(today.getTime() - 86400000).toISOString())
         .lt("created_at", today.toISOString());
+
+      if (yesterdayError) {
+        console.error("Error fetching yesterday's sales:", yesterdayError);
+        throw yesterdayError;
+      }
+
+      console.log("Sales data:", { todaySales, yesterdaySales });
 
       const todayTotal = todaySales?.reduce((sum, order) => sum + order.total_amount, 0) || 0;
       const yesterdayTotal = yesterdaySales?.reduce((sum, order) => sum + order.total_amount, 0) || 0;
@@ -47,10 +67,19 @@ export default function Sales() {
         percentageChange,
       };
     },
+    enabled: !!user?.id,
   });
+
+  // Log any errors
+  useEffect(() => {
+    if (metricsError) {
+      console.error("Metrics query error:", metricsError);
+    }
+  }, [metricsError]);
 
   return (
     <div className="space-y-6">
+      {/* Page header */}
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Vendas</h1>
@@ -61,6 +90,7 @@ export default function Sales() {
         <SaleModal />
       </div>
 
+      {/* Metrics cards */}
       <div className="grid gap-4 md:grid-cols-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -69,7 +99,7 @@ export default function Sales() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {formatCurrency(metrics?.todayTotal || 0)}
+              {metricsLoading ? "Carregando..." : formatCurrency(metrics?.todayTotal || 0)}
             </div>
             <p className="text-xs text-muted-foreground mt-1">
               {metrics?.percentageChange >= 0 ? (
@@ -123,10 +153,12 @@ export default function Sales() {
         </Card>
       </div>
 
+      {/* Analytics */}
       <div className="grid gap-4 md:grid-cols-2">
         <SalesAnalytics />
       </div>
 
+      {/* Sales table */}
       <Card>
         <CardHeader>
           <CardTitle>Histórico de Vendas</CardTitle>

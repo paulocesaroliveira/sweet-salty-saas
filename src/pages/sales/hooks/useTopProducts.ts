@@ -16,7 +16,7 @@ export function useTopProducts() {
     queryKey: ["top-products", user?.id],
     queryFn: async () => {
       // Join with order_items to get product information
-      const { data: orderItems } = await supabase
+      const { data: orderItems, error } = await supabase
         .from("order_items")
         .select(`
           quantity, unit_price, 
@@ -24,28 +24,37 @@ export function useTopProducts() {
         `)
         .eq("vendor_id", user?.id);
 
-      // Group by product using explicit type with a regular object
+      if (error) {
+        console.error("Error fetching order items:", error);
+        throw error;
+      }
+
+      // Use a more explicit approach to avoid deep type instantiation
       const productSalesMap: Record<string, ProductSale> = {};
       
-      // Use forEach to avoid complex type inference issues
-      orderItems?.forEach(item => {
-        const productName = item.product?.name || 'Produto sem nome';
-        const productId = item.product?.id || 'unknown';
-        
-        if (!productSalesMap[productId]) {
-          productSalesMap[productId] = {
-            name: productName,
-            revenue: 0,
-            count: 0,
-          };
+      if (orderItems) {
+        for (const item of orderItems) {
+          const productId = item.product?.id || 'unknown';
+          const productName = item.product?.name || 'Produto sem nome';
+          
+          if (!productSalesMap[productId]) {
+            productSalesMap[productId] = {
+              name: productName,
+              revenue: 0,
+              count: 0
+            };
+          }
+          
+          productSalesMap[productId].revenue += (item.quantity * item.unit_price);
+          productSalesMap[productId].count += item.quantity;
         }
-        productSalesMap[productId].revenue += (item.quantity * item.unit_price);
-        productSalesMap[productId].count += item.quantity;
-      });
+      }
 
-      return Object.values(productSalesMap)
+      const result = Object.values(productSalesMap)
         .sort((a, b) => b.revenue - a.revenue)
         .slice(0, 5);
+        
+      return result;
     },
     enabled: !!user?.id,
   });
