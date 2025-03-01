@@ -122,7 +122,7 @@ export function SalesTable() {
             <SelectValue placeholder="Status" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="">Todos</SelectItem>
+            <SelectItem value="all">Todos</SelectItem>
             <SelectItem value="pending">Pendente</SelectItem>
             <SelectItem value="paid">Pago</SelectItem>
             <SelectItem value="cancelled">Cancelado</SelectItem>
@@ -136,7 +136,7 @@ export function SalesTable() {
             <SelectValue placeholder="Forma de Pagamento" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="">Todas</SelectItem>
+            <SelectItem value="all">Todas</SelectItem>
             <SelectItem value="pix">PIX</SelectItem>
             <SelectItem value="cash">Dinheiro</SelectItem>
             <SelectItem value="credit">Cartão de Crédito</SelectItem>
