@@ -46,6 +46,13 @@ export function SalesAnalytics() {
     },
   });
 
+  // Define explicit interface for product sales data
+  interface ProductSale {
+    name: string;
+    revenue: number;
+    count: number;
+  }
+
   const { data: topProducts } = useQuery({
     queryKey: ["top-products"],
     queryFn: async () => {
@@ -58,30 +65,25 @@ export function SalesAnalytics() {
         `)
         .eq("vendor_id", user?.id);
 
-      // Group by product
-      type ProductSales = Record<string, {
-        name: string,
-        revenue: number,
-        count: number
-      }>;
+      // Group by product using explicit type
+      const productSales: Record<string, ProductSale> = {};
       
-      const productSales = orderItems?.reduce((acc: ProductSales, item) => {
+      orderItems?.forEach(item => {
         const productName = item.product?.name || 'Produto sem nome';
         const productId = item.product?.id || 'unknown';
         
-        if (!acc[productId]) {
-          acc[productId] = {
+        if (!productSales[productId]) {
+          productSales[productId] = {
             name: productName,
             revenue: 0,
             count: 0,
           };
         }
-        acc[productId].revenue += (item.quantity * item.unit_price);
-        acc[productId].count += item.quantity;
-        return acc;
-      }, {});
+        productSales[productId].revenue += (item.quantity * item.unit_price);
+        productSales[productId].count += item.quantity;
+      });
 
-      return Object.values(productSales || {})
+      return Object.values(productSales)
         .sort((a, b) => b.revenue - a.revenue)
         .slice(0, 5);
     },
