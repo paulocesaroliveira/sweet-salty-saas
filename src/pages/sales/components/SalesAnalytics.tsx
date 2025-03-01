@@ -15,6 +15,19 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 
+// Define explicit interfaces for our data structures
+interface DailySale {
+  date: string;
+  amount: number;
+  count: number;
+}
+
+interface ProductSale {
+  name: string;
+  revenue: number;
+  count: number;
+}
+
 export function SalesAnalytics() {
   const { user } = useAuth();
 
@@ -27,31 +40,26 @@ export function SalesAnalytics() {
         .eq("vendor_id", user?.id)
         .order("created_at", { ascending: true });
 
-      // Group sales by day
-      const dailySales = sales?.reduce((acc: Record<string, any>, sale) => {
+      // Group sales by day using a regular object with explicit type
+      const dailySalesMap: Record<string, DailySale> = {};
+      
+      // Use forEach instead of reduce for clearer type handling
+      sales?.forEach((sale) => {
         const date = new Date(sale.created_at).toLocaleDateString();
-        if (!acc[date]) {
-          acc[date] = {
+        if (!dailySalesMap[date]) {
+          dailySalesMap[date] = {
             date,
             amount: 0,
             count: 0,
           };
         }
-        acc[date].amount += sale.total_amount;
-        acc[date].count += 1;
-        return acc;
-      }, {});
+        dailySalesMap[date].amount += sale.total_amount;
+        dailySalesMap[date].count += 1;
+      });
 
-      return Object.values(dailySales || {});
+      return Object.values(dailySalesMap);
     },
   });
-
-  // Define explicit interface for product sales data
-  interface ProductSale {
-    name: string;
-    revenue: number;
-    count: number;
-  }
 
   const { data: topProducts } = useQuery({
     queryKey: ["top-products"],
@@ -65,25 +73,26 @@ export function SalesAnalytics() {
         `)
         .eq("vendor_id", user?.id);
 
-      // Group by product using explicit type
-      const productSales: Record<string, ProductSale> = {};
+      // Group by product using explicit type with a regular object
+      const productSalesMap: Record<string, ProductSale> = {};
       
+      // Use forEach to avoid complex type inference issues
       orderItems?.forEach(item => {
         const productName = item.product?.name || 'Produto sem nome';
         const productId = item.product?.id || 'unknown';
         
-        if (!productSales[productId]) {
-          productSales[productId] = {
+        if (!productSalesMap[productId]) {
+          productSalesMap[productId] = {
             name: productName,
             revenue: 0,
             count: 0,
           };
         }
-        productSales[productId].revenue += (item.quantity * item.unit_price);
-        productSales[productId].count += item.quantity;
+        productSalesMap[productId].revenue += (item.quantity * item.unit_price);
+        productSalesMap[productId].count += item.quantity;
       });
 
-      return Object.values(productSales)
+      return Object.values(productSalesMap)
         .sort((a, b) => b.revenue - a.revenue)
         .slice(0, 5);
     },
