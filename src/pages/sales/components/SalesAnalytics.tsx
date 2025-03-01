@@ -27,8 +27,8 @@ export function SalesAnalytics() {
         .eq("vendor_id", user?.id)
         .order("created_at", { ascending: true });
 
-      // Agrupar vendas por dia
-      const dailySales = sales?.reduce((acc: any, sale) => {
+      // Group sales by day
+      const dailySales = sales?.reduce((acc: Record<string, any>, sale) => {
         const date = new Date(sale.created_at).toLocaleDateString();
         if (!acc[date]) {
           acc[date] = {
@@ -54,28 +54,35 @@ export function SalesAnalytics() {
         .from("order_items")
         .select(`
           quantity, unit_price, 
-          product:products(name)
+          product:products(id, name)
         `)
         .eq("vendor_id", user?.id);
 
-      // Agrupar por produto
-      const productSales = orderItems?.reduce((acc: any, item) => {
+      // Group by product
+      type ProductSales = Record<string, {
+        name: string,
+        revenue: number,
+        count: number
+      }>;
+      
+      const productSales = orderItems?.reduce((acc: ProductSales, item) => {
         const productName = item.product?.name || 'Produto sem nome';
+        const productId = item.product?.id || 'unknown';
         
-        if (!acc[productName]) {
-          acc[productName] = {
+        if (!acc[productId]) {
+          acc[productId] = {
             name: productName,
             revenue: 0,
             count: 0,
           };
         }
-        acc[productName].revenue += (item.quantity * item.unit_price);
-        acc[productName].count += item.quantity;
+        acc[productId].revenue += (item.quantity * item.unit_price);
+        acc[productId].count += item.quantity;
         return acc;
       }, {});
 
       return Object.values(productSales || {})
-        .sort((a: any, b: any) => b.revenue - a.revenue)
+        .sort((a, b) => b.revenue - a.revenue)
         .slice(0, 5);
     },
   });

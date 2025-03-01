@@ -22,10 +22,12 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
 
 export function SaleModal() {
   const [open, setOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const { user } = useAuth();
   const [formData, setFormData] = useState({
     product: "",
     quantity: "",
@@ -42,25 +44,40 @@ export function SaleModal() {
     setIsLoading(true);
 
     try {
-      const { data, error } = await supabase
+      if (!user?.id) {
+        throw new Error("User not authenticated");
+      }
+
+      // Create the order first
+      const { data: orderData, error: orderError } = await supabase
         .from("orders")
         .insert({
-          product_name: formData.product,
-          quantity: Number(formData.quantity),
-          unit_price: Number(formData.price),
-          total_amount: Number(formData.quantity) * Number(formData.price),
+          customer_name: formData.customer || "Cliente não identificado",
+          total_amount: Number(formData.quantity) * Number(formData.price) - Number(formData.discount || 0),
           payment_method: formData.payment,
           sale_origin: formData.origin,
-          customer_name: formData.customer,
-          discount_amount: Number(formData.discount),
+          discount_amount: Number(formData.discount || 0),
           seller_notes: formData.notes,
           status: "pending",
           payment_status: "pending",
+          vendor_id: user.id,
         })
         .select()
         .single();
 
-      if (error) throw error;
+      if (orderError) throw orderError;
+
+      // Create the order item
+      const { error: itemError } = await supabase
+        .from("order_items")
+        .insert({
+          order_id: orderData.id,
+          product_id: formData.product, // Assuming this is a valid product ID
+          quantity: Number(formData.quantity),
+          unit_price: Number(formData.price),
+        });
+
+      if (itemError) throw itemError;
 
       toast.success("Venda registrada com sucesso!");
       setOpen(false);

@@ -33,8 +33,8 @@ export function SalesTable() {
   const { data: sales, isLoading } = useSales(filters);
 
   const handlePrintReceipt = async (orderId: string) => {
-    // Aqui você pode implementar a lógica de impressão
-    // Por exemplo, abrindo uma nova janela com o recibo formatado
+    // Here you can implement the printing logic
+    // For example, opening a new window with the formatted receipt
     const { data: order } = await supabase
       .from("orders")
       .select("*")
