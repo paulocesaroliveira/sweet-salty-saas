@@ -25,12 +25,19 @@ export function useSales(filters: {
   return useQuery({
     queryKey: ["sales", filters, user?.id],
     queryFn: async () => {
+      if (!user?.id) {
+        console.error("No user ID available for sales query");
+        return [];
+      }
+
+      console.log("Fetching sales with user ID:", user.id);
+      
       let query = supabase
         .from("orders")
         .select(`
           id, created_at, customer_name, total_amount, payment_method, status, payment_status
         `)
-        .eq("vendor_id", user?.id);
+        .eq("vendor_id", user.id);
 
       if (filters.startDate) {
         query = query.gte("created_at", filters.startDate.toISOString());

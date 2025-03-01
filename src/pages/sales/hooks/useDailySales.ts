@@ -29,20 +29,26 @@ export function useDailySales() {
       // Group sales by day using a Record with explicit type
       const dailySalesMap: Record<string, DailySale> = {};
       
-      if (sales) {
-        for (const sale of sales) {
-          const date = new Date(sale.created_at).toLocaleDateString();
+      if (sales && Array.isArray(sales)) {
+        // Using for loop instead of forEach to avoid type issues
+        for (let i = 0; i < sales.length; i++) {
+          const sale = sales[i];
           
-          if (!dailySalesMap[date]) {
-            dailySalesMap[date] = {
-              date,
-              amount: 0,
-              count: 0,
-            };
+          if (sale && typeof sale === 'object' && 'created_at' in sale) {
+            const date = new Date(String(sale.created_at)).toLocaleDateString();
+            const amount = typeof sale.total_amount === 'number' ? sale.total_amount : 0;
+            
+            if (!dailySalesMap[date]) {
+              dailySalesMap[date] = {
+                date,
+                amount: 0,
+                count: 0,
+              };
+            }
+            
+            dailySalesMap[date].amount += amount;
+            dailySalesMap[date].count += 1;
           }
-          
-          dailySalesMap[date].amount += sale.total_amount;
-          dailySalesMap[date].count += 1;
         }
       }
 

@@ -22,8 +22,10 @@ import { useSales } from "../hooks/useSales";
 import { formatCurrency } from "@/lib/utils";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
 
 export function SalesTable() {
+  const { user } = useAuth();
   const [filters, setFilters] = useState({
     search: "",
     status: "",
@@ -81,12 +83,22 @@ export function SalesTable() {
   };
 
   const handleMarkAsPaid = async (orderId: string) => {
+    if (!user?.id) {
+      toast.error("Usuário não autenticado");
+      return;
+    }
+    
     const { error } = await supabase
       .from("orders")
-      .update({ payment_status: "paid" })
-      .eq("id", orderId);
+      .update({ 
+        payment_status: "paid",
+        status: "paid" 
+      })
+      .eq("id", orderId)
+      .eq("vendor_id", user.id);
 
     if (error) {
+      console.error("Error marking order as paid:", error);
       toast.error("Erro ao marcar como pago");
     } else {
       toast.success("Venda marcada como paga");

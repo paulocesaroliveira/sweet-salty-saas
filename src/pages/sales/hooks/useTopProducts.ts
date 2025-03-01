@@ -32,25 +32,37 @@ export function useTopProducts() {
       // Use a more explicit approach to avoid deep type instantiation
       const productSalesMap: Record<string, ProductSale> = {};
       
-      if (orderItems) {
-        for (const item of orderItems) {
-          const productId = item.product?.id || 'unknown';
-          const productName = item.product?.name || 'Produto sem nome';
+      if (orderItems && Array.isArray(orderItems)) {
+        // Using for loop instead of forEach to avoid type issues
+        for (let i = 0; i < orderItems.length; i++) {
+          const item = orderItems[i];
           
-          if (!productSalesMap[productId]) {
-            productSalesMap[productId] = {
-              name: productName,
-              revenue: 0,
-              count: 0
-            };
+          // Use type guards to ensure properties exist
+          if (item && typeof item === 'object') {
+            const product = item.product;
+            const productId = product && typeof product === 'object' && 'id' in product ? String(product.id) : 'unknown';
+            const productName = product && typeof product === 'object' && 'name' in product ? String(product.name) : 'Produto sem nome';
+            
+            const quantity = typeof item.quantity === 'number' ? item.quantity : 0;
+            const unitPrice = typeof item.unit_price === 'number' ? item.unit_price : 0;
+            
+            if (!productSalesMap[productId]) {
+              productSalesMap[productId] = {
+                name: productName,
+                revenue: 0,
+                count: 0
+              };
+            }
+            
+            productSalesMap[productId].revenue += (quantity * unitPrice);
+            productSalesMap[productId].count += quantity;
           }
-          
-          productSalesMap[productId].revenue += (item.quantity * item.unit_price);
-          productSalesMap[productId].count += item.quantity;
         }
       }
 
-      const result = Object.values(productSalesMap)
+      // Convert the map to an array and sort by revenue
+      const productsArray: ProductSale[] = Object.values(productSalesMap);
+      const result = productsArray
         .sort((a, b) => b.revenue - a.revenue)
         .slice(0, 5);
         
