@@ -43,12 +43,14 @@ export function SalesTable() {
 
     if (!order) return;
 
+    const receiptId = order.id.substring(0, 8).toUpperCase();
+    
     const receiptWindow = window.open("", "_blank");
     if (receiptWindow) {
       receiptWindow.document.write(`
         <html>
           <head>
-            <title>Recibo #${order.receipt_number}</title>
+            <title>Recibo #${receiptId}</title>
             <style>
               body { font-family: Arial, sans-serif; padding: 20px; }
               .header { text-align: center; margin-bottom: 20px; }
@@ -59,7 +61,7 @@ export function SalesTable() {
           <body>
             <div class="header">
               <h1>Recibo de Venda</h1>
-              <p>Recibo #${order.receipt_number}</p>
+              <p>Recibo #${receiptId}</p>
               <p>${new Date(order.created_at).toLocaleDateString()}</p>
             </div>
             <div class="details">
@@ -95,7 +97,7 @@ export function SalesTable() {
     <div className="space-y-4">
       <div className="flex flex-col sm:flex-row gap-4">
         <Input
-          placeholder="Buscar por cliente ou número do recibo..."
+          placeholder="Buscar por cliente ou ID..."
           value={filters.search}
           onChange={(e) => setFilters(f => ({ ...f, search: e.target.value }))}
           className="sm:max-w-xs"
@@ -136,11 +138,10 @@ export function SalesTable() {
           <TableHeader>
             <TableRow>
               <TableHead>Data</TableHead>
-              <TableHead>Produto</TableHead>
+              <TableHead>Cliente</TableHead>
               <TableHead>Valor</TableHead>
               <TableHead>Pagamento</TableHead>
               <TableHead>Status</TableHead>
-              <TableHead>Cliente</TableHead>
               <TableHead>Ações</TableHead>
             </TableRow>
           </TableHeader>
@@ -163,7 +164,7 @@ export function SalesTable() {
                   <TableCell>
                     {new Date(sale.created_at).toLocaleDateString()}
                   </TableCell>
-                  <TableCell>{sale.product_name}</TableCell>
+                  <TableCell>{sale.customer_name}</TableCell>
                   <TableCell>{formatCurrency(sale.total_amount)}</TableCell>
                   <TableCell>{sale.payment_method}</TableCell>
                   <TableCell>
@@ -174,7 +175,6 @@ export function SalesTable() {
                       {sale.status}
                     </span>
                   </TableCell>
-                  <TableCell>{sale.customer_name}</TableCell>
                   <TableCell>
                     <div className="flex gap-2">
                       <Button

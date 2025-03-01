@@ -49,22 +49,28 @@ export function SalesAnalytics() {
   const { data: topProducts } = useQuery({
     queryKey: ["top-products"],
     queryFn: async () => {
-      const { data: products } = await supabase
-        .from("orders")
-        .select("product_name, total_amount")
+      // Join with order_items to get product information
+      const { data: orderItems } = await supabase
+        .from("order_items")
+        .select(`
+          quantity, unit_price, 
+          product:products(name)
+        `)
         .eq("vendor_id", user?.id);
 
       // Agrupar por produto
-      const productSales = products?.reduce((acc: any, sale) => {
-        if (!acc[sale.product_name]) {
-          acc[sale.product_name] = {
-            name: sale.product_name,
+      const productSales = orderItems?.reduce((acc: any, item) => {
+        const productName = item.product?.name || 'Produto sem nome';
+        
+        if (!acc[productName]) {
+          acc[productName] = {
+            name: productName,
             revenue: 0,
             count: 0,
           };
         }
-        acc[sale.product_name].revenue += sale.total_amount;
-        acc[sale.product_name].count += 1;
+        acc[productName].revenue += (item.quantity * item.unit_price);
+        acc[productName].count += item.quantity;
         return acc;
       }, {});
 

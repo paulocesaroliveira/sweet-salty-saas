@@ -1,3 +1,4 @@
+
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { SaleModal } from "./components/SaleModal";
 import { SalesTable } from "./components/SalesTable";
@@ -76,7 +77,7 @@ export default function Sales() {
               ) : (
                 <ArrowDownRight className="h-4 w-4 text-red-500 inline mr-1" />
               )}
-              {metrics?.percentageChange.toFixed(1)}% em relação a ontem
+              {metrics?.percentageChange?.toFixed(1) || 0}% em relação a ontem
             </p>
           </CardContent>
         </Card>

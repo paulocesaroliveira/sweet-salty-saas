@@ -38,7 +38,7 @@ export function useSales(filters: {
       if (filters.search) {
         query = query.or(`
           customer_name.ilike.%${filters.search}%,
-          receipt_number.ilike.%${filters.search}%
+          id.ilike.%${filters.search}%
         `);
       }
 

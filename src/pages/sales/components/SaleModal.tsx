@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import {
   Dialog,
@@ -19,8 +20,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { toast } from "react-toastify";
-import { supabase } from "@/lib/supabase";
+import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
 
 export function SaleModal() {
   const [open, setOpen] = useState(false);
@@ -143,7 +144,10 @@ export function SaleModal() {
             <Label htmlFor="payment" className="text-right">
               Pagamento
             </Label>
-            <Select>
+            <Select 
+              value={formData.payment}
+              onValueChange={(value) => setFormData({ ...formData, payment: value })}
+            >
               <SelectTrigger className="col-span-3">
                 <SelectValue placeholder="Selecione a forma de pagamento" />
               </SelectTrigger>
@@ -160,7 +164,10 @@ export function SaleModal() {
             <Label htmlFor="origin" className="text-right">
               Origem
             </Label>
-            <Select>
+            <Select
+              value={formData.origin}
+              onValueChange={(value) => setFormData({ ...formData, origin: value })}
+            >
               <SelectTrigger className="col-span-3">
                 <SelectValue placeholder="Selecione a origem da venda" />
               </SelectTrigger>
