@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Dialog,
   DialogContent,
@@ -23,6 +23,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { useQuery } from "@tanstack/react-query";
 
 export function SaleModal() {
   const [open, setOpen] = useState(false);
@@ -39,6 +40,58 @@ export function SaleModal() {
     notes: "",
   });
 
+  // Fetch products from database
+  const { data: products } = useQuery({
+    queryKey: ["products", user?.id],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("products")
+        .select("id, name, price")
+        .eq("vendor_id", user?.id)
+        .eq("active", true);
+
+      if (error) {
+        console.error("Error fetching products:", error);
+        throw error;
+      }
+
+      return data || [];
+    },
+    enabled: !!user?.id && open,
+  });
+
+  // Fetch customers from database
+  const { data: customers } = useQuery({
+    queryKey: ["customers", user?.id],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("customers")
+        .select("id, full_name")
+        .eq("vendor_id", user?.id);
+
+      if (error) {
+        console.error("Error fetching customers:", error);
+        throw error;
+      }
+
+      return data || [];
+    },
+    enabled: !!user?.id && open,
+  });
+
+  // Update price when product changes
+  useEffect(() => {
+    if (formData.product && products) {
+      const selectedProduct = products.find(prod => prod.id === formData.product);
+      if (selectedProduct) {
+        setFormData(prev => ({
+          ...prev,
+          price: selectedProduct.price.toString()
+        }));
+      }
+    }
+  }, [formData.product, products]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
@@ -48,11 +101,23 @@ export function SaleModal() {
         throw new Error("User not authenticated");
       }
 
+      // Get customer name from selection or use generic customer
+      let customerName = "Cliente não identificado";
+      if (formData.customer) {
+        if (formData.customer === "generic") {
+          customerName = "Cliente não identificado";
+        } else {
+          const selectedCustomer = customers?.find(cust => cust.id === formData.customer);
+          customerName = selectedCustomer?.full_name || "Cliente não identificado";
+        }
+      }
+
       // Create the order first
       const { data: orderData, error: orderError } = await supabase
         .from("orders")
         .insert({
-          customer_name: formData.customer || "Cliente não identificado",
+          customer_name: customerName,
+          customer_id: formData.customer !== "generic" ? formData.customer : null,
           total_amount: Number(formData.quantity) * Number(formData.price) - Number(formData.discount || 0),
           payment_method: formData.payment,
           sale_origin: formData.origin,
@@ -72,7 +137,7 @@ export function SaleModal() {
         .from("order_items")
         .insert({
           order_id: orderData.id,
-          product_id: formData.product, // Assuming this is a valid product ID
+          product_id: formData.product,
           quantity: Number(formData.quantity),
           unit_price: Number(formData.price),
         });
@@ -118,20 +183,30 @@ export function SaleModal() {
         <div className="grid gap-4 py-4">
           <div className="grid grid-cols-4 items-center gap-4">
             <Label htmlFor="product" className="text-right">
-              Produto
+              Produto *
             </Label>
-            <Input
-              id="product"
-              placeholder="Nome do produto"
-              className="col-span-3"
-              value={formData.product}
-              onChange={(e) => setFormData({ ...formData, product: e.target.value })}
-            />
+            <div className="col-span-3">
+              <Select 
+                value={formData.product}
+                onValueChange={(value) => setFormData({ ...formData, product: value })}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione um produto" />
+                </SelectTrigger>
+                <SelectContent>
+                  {products?.map((product) => (
+                    <SelectItem key={product.id} value={product.id}>
+                      {product.name} - R$ {product.price.toFixed(2)}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
           </div>
 
           <div className="grid grid-cols-4 items-center gap-4">
             <Label htmlFor="quantity" className="text-right">
-              Quantidade
+              Quantidade *
             </Label>
             <Input
               id="quantity"
@@ -145,7 +220,7 @@ export function SaleModal() {
 
           <div className="grid grid-cols-4 items-center gap-4">
             <Label htmlFor="price" className="text-right">
-              Preço Unitário
+              Preço Unitário *
             </Label>
             <Input
               id="price"
@@ -159,7 +234,7 @@ export function SaleModal() {
 
           <div className="grid grid-cols-4 items-center gap-4">
             <Label htmlFor="payment" className="text-right">
-              Pagamento
+              Pagamento *
             </Label>
             <Select 
               value={formData.payment}
@@ -201,18 +276,29 @@ export function SaleModal() {
             <Label htmlFor="customer" className="text-right">
               Cliente
             </Label>
-            <Input
-              id="customer"
-              placeholder="Nome do cliente (opcional)"
-              className="col-span-3"
-              value={formData.customer}
-              onChange={(e) => setFormData({ ...formData, customer: e.target.value })}
-            />
+            <div className="col-span-3">
+              <Select
+                value={formData.customer}
+                onValueChange={(value) => setFormData({ ...formData, customer: value })}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione um cliente" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="generic">Cliente não identificado</SelectItem>
+                  {customers?.map((customer) => (
+                    <SelectItem key={customer.id} value={customer.id}>
+                      {customer.full_name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
           </div>
 
           <div className="grid grid-cols-4 items-center gap-4">
             <Label htmlFor="discount" className="text-right">
-              Desconto (%)
+              Desconto
             </Label>
             <Input
               id="discount"
