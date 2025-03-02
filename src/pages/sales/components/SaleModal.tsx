@@ -103,17 +103,21 @@ export function SaleModal() {
           customer_id: null, // Simple sale doesn't link to a customer record
           total_amount: Number(formData.quantity) * Number(formData.price),
           payment_method: formData.payment,
-          sale_origin: formData.origin,
+          sale_origin: formData.origin || null,
           discount_amount: 0,
-          seller_notes: formData.notes,
+          seller_notes: formData.notes || null,
           status: "pending",
           payment_status: "pending",
           vendor_id: user.id,
+          sale_type: "manual",
         })
         .select()
         .single();
 
-      if (orderError) throw orderError;
+      if (orderError) {
+        console.error("Order creation error:", orderError);
+        throw orderError;
+      }
 
       // Create the order item
       const { error: itemError } = await supabase
@@ -125,7 +129,10 @@ export function SaleModal() {
           unit_price: Number(formData.price),
         });
 
-      if (itemError) throw itemError;
+      if (itemError) {
+        console.error("Order item creation error:", itemError);
+        throw itemError;
+      }
 
       toast.success("Venda registrada com sucesso!");
       setOpen(false);

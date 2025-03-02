@@ -1,4 +1,3 @@
-
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { SaleModal } from "./components/SaleModal";
 import { SalesTable } from "./components/SalesTable";
@@ -93,10 +92,7 @@ export default function Sales() {
         </div>
         <div className="flex gap-2">
           <SaleModal />
-          <Button>
-            <UserCircle className="mr-2 h-4 w-4" />
-            Nova Venda Cliente
-          </Button>
+          <CustomerSaleModal />
         </div>
       </div>
 

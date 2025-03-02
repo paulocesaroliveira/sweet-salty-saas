@@ -192,17 +192,21 @@ export function CustomerSaleModal() {
           customer_id: selectedCustomer,
           total_amount: totalAmount,
           payment_method: formData.payment,
-          sale_origin: formData.origin,
+          sale_origin: formData.origin || null,
           discount_amount: 0,
-          seller_notes: formData.notes,
+          seller_notes: formData.notes || null,
           status: "pending",
           payment_status: "pending",
           vendor_id: user.id,
+          sale_type: "manual",
         })
         .select()
         .single();
 
-      if (orderError) throw orderError;
+      if (orderError) {
+        console.error("Order creation error:", orderError);
+        throw orderError;
+      }
 
       // Create the order items
       const orderItemsData = orderItems.map((item) => ({
@@ -216,7 +220,10 @@ export function CustomerSaleModal() {
         .from("order_items")
         .insert(orderItemsData);
 
-      if (itemsError) throw itemsError;
+      if (itemsError) {
+        console.error("Order items creation error:", itemsError);
+        throw itemsError;
+      }
 
       toast.success("Venda registrada com sucesso!");
       
