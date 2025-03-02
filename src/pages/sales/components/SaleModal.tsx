@@ -9,7 +9,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Plus, ShoppingCart, UserCircle } from "lucide-react";
+import { Plus, ShoppingCart } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -23,14 +23,15 @@ import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
-import { useQuery } from "@tanstack/react-query";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { CustomerSaleModal } from "./CustomerSaleModal";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { formatCurrency } from "@/lib/utils";
 
 export function SaleModal() {
   const [open, setOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const { user } = useAuth();
+  const queryClient = useQueryClient();
+  
   const [formData, setFormData] = useState({
     product: "",
     quantity: "",
@@ -38,9 +39,15 @@ export function SaleModal() {
     payment: "",
     origin: "",
     customer: "",
-    discount: "",
     notes: "",
   });
+
+  // Calculate total
+  const calculateTotal = () => {
+    const quantity = Number(formData.quantity) || 0;
+    const price = Number(formData.price) || 0;
+    return quantity * price;
+  };
 
   // Fetch products from database
   const { data: products } = useQuery({
@@ -84,16 +91,20 @@ export function SaleModal() {
         throw new Error("User not authenticated");
       }
 
+      if (!formData.product || !formData.quantity || !formData.price || !formData.payment) {
+        throw new Error("Preencha todos os campos obrigatórios");
+      }
+
       // Create the order first
       const { data: orderData, error: orderError } = await supabase
         .from("orders")
         .insert({
           customer_name: formData.customer || "Cliente não identificado",
           customer_id: null, // Simple sale doesn't link to a customer record
-          total_amount: Number(formData.quantity) * Number(formData.price) - Number(formData.discount || 0),
+          total_amount: Number(formData.quantity) * Number(formData.price),
           payment_method: formData.payment,
           sale_origin: formData.origin,
-          discount_amount: Number(formData.discount || 0),
+          discount_amount: 0,
           seller_notes: formData.notes,
           status: "pending",
           payment_status: "pending",
@@ -125,11 +136,21 @@ export function SaleModal() {
         payment: "",
         origin: "",
         customer: "",
-        discount: "",
         notes: "",
       });
+      
+      // Refresh data after saving
+      queryClient.invalidateQueries({ queryKey: ["sales"] });
+      queryClient.invalidateQueries({ queryKey: ["sales-metrics"] });
+      queryClient.invalidateQueries({ queryKey: ["daily-sales"] });
+      queryClient.invalidateQueries({ queryKey: ["top-products"] });
+      
     } catch (error) {
-      toast.error("Erro ao registrar venda");
+      if (error instanceof Error) {
+        toast.error(error.message);
+      } else {
+        toast.error("Erro ao registrar venda");
+      }
       console.error(error);
     } finally {
       setIsLoading(false);
@@ -140,7 +161,7 @@ export function SaleModal() {
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         <Button>
-          <Plus className="mr-2 h-4 w-4" />
+          <ShoppingCart className="mr-2 h-4 w-4" />
           Nova Venda
         </Button>
       </DialogTrigger>
@@ -148,170 +169,146 @@ export function SaleModal() {
         <DialogHeader>
           <DialogTitle>Registrar Nova Venda</DialogTitle>
           <DialogDescription>
-            Escolha o tipo de venda que deseja registrar.
+            Preencha os detalhes da venda abaixo.
           </DialogDescription>
         </DialogHeader>
 
-        <Tabs defaultValue="simple" className="w-full">
-          <TabsList className="w-full">
-            <TabsTrigger value="simple" className="flex-1">
-              <ShoppingCart className="mr-2 h-4 w-4" />
-              Nova Venda
-            </TabsTrigger>
-            <TabsTrigger value="customer" className="flex-1">
-              <UserCircle className="mr-2 h-4 w-4" />
-              Nova Venda Cliente
-            </TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="simple" className="mt-4">
-            <div className="grid gap-4 py-4">
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="product" className="text-right">
-                  Produto *
-                </Label>
-                <div className="col-span-3">
-                  <Select 
-                    value={formData.product}
-                    onValueChange={(value) => setFormData({ ...formData, product: value })}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecione um produto" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {products?.map((product) => (
-                        <SelectItem key={product.id} value={product.id}>
-                          {product.name} - R$ {product.price.toFixed(2)}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="quantity" className="text-right">
-                  Quantidade *
-                </Label>
-                <Input
-                  id="quantity"
-                  type="number"
-                  placeholder="0"
-                  className="col-span-3"
-                  value={formData.quantity}
-                  onChange={(e) => setFormData({ ...formData, quantity: e.target.value })}
-                />
-              </div>
-
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="price" className="text-right">
-                  Preço Unitário *
-                </Label>
-                <Input
-                  id="price"
-                  type="number"
-                  placeholder="0,00"
-                  className="col-span-3"
-                  value={formData.price}
-                  onChange={(e) => setFormData({ ...formData, price: e.target.value })}
-                />
-              </div>
-
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="payment" className="text-right">
-                  Pagamento *
-                </Label>
-                <Select 
-                  value={formData.payment}
-                  onValueChange={(value) => setFormData({ ...formData, payment: value })}
-                >
-                  <SelectTrigger className="col-span-3">
-                    <SelectValue placeholder="Selecione a forma de pagamento" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="pix">PIX</SelectItem>
-                    <SelectItem value="cash">Dinheiro</SelectItem>
-                    <SelectItem value="credit">Cartão de Crédito</SelectItem>
-                    <SelectItem value="debit">Cartão de Débito</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="origin" className="text-right">
-                  Origem
-                </Label>
-                <Select
-                  value={formData.origin}
-                  onValueChange={(value) => setFormData({ ...formData, origin: value })}
-                >
-                  <SelectTrigger className="col-span-3">
-                    <SelectValue placeholder="Selecione a origem da venda" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="whatsapp">WhatsApp</SelectItem>
-                    <SelectItem value="store">Loja Física</SelectItem>
-                    <SelectItem value="instagram">Instagram</SelectItem>
-                    <SelectItem value="event">Evento</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="customer" className="text-right">
-                  Cliente
-                </Label>
-                <Input
-                  id="customer"
-                  placeholder="Nome do cliente"
-                  className="col-span-3"
-                  value={formData.customer}
-                  onChange={(e) => setFormData({ ...formData, customer: e.target.value })}
-                />
-              </div>
-
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="discount" className="text-right">
-                  Desconto
-                </Label>
-                <Input
-                  id="discount"
-                  type="number"
-                  placeholder="0"
-                  className="col-span-3"
-                  value={formData.discount}
-                  onChange={(e) => setFormData({ ...formData, discount: e.target.value })}
-                />
-              </div>
-
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="notes" className="text-right">
-                  Observações
-                </Label>
-                <Textarea
-                  id="notes"
-                  placeholder="Observações adicionais"
-                  className="col-span-3"
-                  value={formData.notes}
-                  onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                />
-              </div>
+        <div className="grid gap-4 py-4">
+          <div className="grid grid-cols-4 items-center gap-4">
+            <Label htmlFor="product" className="text-right">
+              Produto *
+            </Label>
+            <div className="col-span-3">
+              <Select 
+                value={formData.product}
+                onValueChange={(value) => setFormData({ ...formData, product: value })}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione um produto" />
+                </SelectTrigger>
+                <SelectContent>
+                  {products?.map((product) => (
+                    <SelectItem key={product.id} value={product.id}>
+                      {product.name} - R$ {product.price.toFixed(2)}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
+          </div>
 
-            <div className="flex justify-end gap-2 mt-4">
-              <Button variant="outline" onClick={() => setOpen(false)}>
-                Cancelar
-              </Button>
-              <Button type="submit" onClick={handleSubmit} disabled={isLoading}>
-                {isLoading ? "Salvando..." : "Salvar Venda"}
-              </Button>
+          <div className="grid grid-cols-4 items-center gap-4">
+            <Label htmlFor="quantity" className="text-right">
+              Quantidade *
+            </Label>
+            <Input
+              id="quantity"
+              type="number"
+              placeholder="0"
+              className="col-span-3"
+              value={formData.quantity}
+              onChange={(e) => setFormData({ ...formData, quantity: e.target.value })}
+            />
+          </div>
+
+          <div className="grid grid-cols-4 items-center gap-4">
+            <Label htmlFor="price" className="text-right">
+              Preço Unitário *
+            </Label>
+            <Input
+              id="price"
+              type="number"
+              placeholder="0,00"
+              className="col-span-3"
+              value={formData.price}
+              onChange={(e) => setFormData({ ...formData, price: e.target.value })}
+            />
+          </div>
+
+          <div className="grid grid-cols-4 items-center gap-4">
+            <Label htmlFor="payment" className="text-right">
+              Pagamento *
+            </Label>
+            <Select 
+              value={formData.payment}
+              onValueChange={(value) => setFormData({ ...formData, payment: value })}
+            >
+              <SelectTrigger className="col-span-3">
+                <SelectValue placeholder="Selecione a forma de pagamento" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="pix">PIX</SelectItem>
+                <SelectItem value="cash">Dinheiro</SelectItem>
+                <SelectItem value="credit">Cartão de Crédito</SelectItem>
+                <SelectItem value="debit">Cartão de Débito</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="grid grid-cols-4 items-center gap-4">
+            <Label htmlFor="origin" className="text-right">
+              Origem
+            </Label>
+            <Select
+              value={formData.origin}
+              onValueChange={(value) => setFormData({ ...formData, origin: value })}
+            >
+              <SelectTrigger className="col-span-3">
+                <SelectValue placeholder="Selecione a origem da venda" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="whatsapp">WhatsApp</SelectItem>
+                <SelectItem value="store">Loja Física</SelectItem>
+                <SelectItem value="instagram">Instagram</SelectItem>
+                <SelectItem value="event">Evento</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="grid grid-cols-4 items-center gap-4">
+            <Label htmlFor="customer" className="text-right">
+              Cliente
+            </Label>
+            <Input
+              id="customer"
+              placeholder="Nome do cliente"
+              className="col-span-3"
+              value={formData.customer}
+              onChange={(e) => setFormData({ ...formData, customer: e.target.value })}
+            />
+          </div>
+
+          <div className="grid grid-cols-4 items-center gap-4">
+            <Label htmlFor="notes" className="text-right">
+              Observações
+            </Label>
+            <Textarea
+              id="notes"
+              placeholder="Observações adicionais"
+              className="col-span-3"
+              value={formData.notes}
+              onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+            />
+          </div>
+          
+          <div className="grid grid-cols-4 items-center gap-4">
+            <Label className="text-right font-bold">
+              Valor Total:
+            </Label>
+            <div className="col-span-3 text-xl font-bold text-green-600 border-t pt-2">
+              {formatCurrency(calculateTotal())}
             </div>
-          </TabsContent>
+          </div>
+        </div>
 
-          <TabsContent value="customer" className="mt-4">
-            <CustomerSaleModal onClose={() => setOpen(false)} />
-          </TabsContent>
-        </Tabs>
+        <div className="flex justify-end gap-2 mt-4">
+          <Button variant="outline" onClick={() => setOpen(false)}>
+            Cancelar
+          </Button>
+          <Button type="submit" onClick={handleSubmit} disabled={isLoading}>
+            {isLoading ? "Salvando..." : "Salvar Venda"}
+          </Button>
+        </div>
       </DialogContent>
     </Dialog>
   );

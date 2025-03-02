@@ -9,13 +9,17 @@ import {
   TrendingUp, 
   Store,
   ArrowUpRight,
-  ArrowDownRight
+  ArrowDownRight,
+  Plus,
+  UserCircle
 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { formatCurrency } from "@/lib/utils";
 import { useEffect } from "react";
+import { Button } from "@/components/ui/button";
+import { CustomerSaleModal } from "./components/CustomerSaleModal";
 
 export default function Sales() {
   const { user } = useAuth();
@@ -87,7 +91,13 @@ export default function Sales() {
             Registre e gerencie suas vendas manuais e online.
           </p>
         </div>
-        <SaleModal />
+        <div className="flex gap-2">
+          <SaleModal />
+          <Button>
+            <UserCircle className="mr-2 h-4 w-4" />
+            Nova Venda Cliente
+          </Button>
+        </div>
       </div>
 
       {/* Metrics cards */}
