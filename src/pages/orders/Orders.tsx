@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { format, isEqual } from "date-fns";
@@ -266,8 +267,8 @@ const OrderDetail = ({ order, onClose }: OrderDetailProps) => {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {Object.entries(statusConfig).map(([value, config]) => (
-                    <SelectItem key={value} value={value}>
+                  {Object.entries(statusConfig).map(([key, config]) => (
+                    <SelectItem key={key} value={key as Order["status"]}>
                       <div className="flex items-center">
                         <config.icon className="h-4 w-4 mr-2" />
                         {config.label}
@@ -288,8 +289,8 @@ const OrderDetail = ({ order, onClose }: OrderDetailProps) => {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {Object.entries(paymentStatusConfig).map(([value, config]) => (
-                    <SelectItem key={value} value={value}>
+                  {Object.entries(paymentStatusConfig).map(([key, config]) => (
+                    <SelectItem key={key} value={key as Order["payment_status"]}>
                       <div className="flex items-center">
                         <config.icon className="h-4 w-4 mr-2" />
                         {config.label}
@@ -527,14 +528,17 @@ const Orders = () => {
 
               <div>
                 <Label>Status do Pedido</Label>
-                <Select value={statusFilter} onValueChange={setStatusFilter}>
+                <Select 
+                  value={statusFilter} 
+                  onValueChange={setStatusFilter}
+                >
                   <SelectTrigger>
                     <SelectValue placeholder="Todos os status" />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="">Todos</SelectItem>
-                    {Object.entries(statusConfig).map(([value, config]) => (
-                      <SelectItem key={value} value={value}>
+                    {Object.entries(statusConfig).map(([key, config]) => (
+                      <SelectItem key={key} value={key}>
                         <div className="flex items-center">
                           <config.icon className="h-4 w-4 mr-2" />
                           {config.label}
@@ -547,14 +551,17 @@ const Orders = () => {
 
               <div>
                 <Label>Status do Pagamento</Label>
-                <Select value={paymentStatusFilter} onValueChange={setPaymentStatusFilter}>
+                <Select 
+                  value={paymentStatusFilter} 
+                  onValueChange={setPaymentStatusFilter}
+                >
                   <SelectTrigger>
                     <SelectValue placeholder="Todos os status" />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="">Todos</SelectItem>
-                    {Object.entries(paymentStatusConfig).map(([value, config]) => (
-                      <SelectItem key={value} value={value}>
+                    {Object.entries(paymentStatusConfig).map(([key, config]) => (
+                      <SelectItem key={key} value={key}>
                         <div className="flex items-center">
                           <config.icon className="h-4 w-4 mr-2" />
                           {config.label}
@@ -761,8 +768,8 @@ const Orders = () => {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="">Todos</SelectItem>
-                  {Object.entries(statusConfig).map(([value, config]) => (
-                    <SelectItem key={value} value={value}>
+                  {Object.entries(statusConfig).map(([key, config]) => (
+                    <SelectItem key={key} value={key}>
                       <div className="flex items-center">
                         <config.icon className="h-4 w-4 mr-2" />
                         {config.label}
@@ -781,8 +788,8 @@ const Orders = () => {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="">Todos</SelectItem>
-                  {Object.entries(paymentStatusConfig).map(([value, config]) => (
-                    <SelectItem key={value} value={value}>
+                  {Object.entries(paymentStatusConfig).map(([key, config]) => (
+                    <SelectItem key={key} value={key}>
                       <div className="flex items-center">
                         <config.icon className="h-4 w-4 mr-2" />
                         {config.label}
