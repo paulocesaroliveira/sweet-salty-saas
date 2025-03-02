@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { format, isEqual } from "date-fns";
@@ -107,7 +106,6 @@ interface OrderDetailProps {
   onClose: () => void;
 }
 
-// Configuration for status display
 const statusConfig = {
   pending: {
     label: "Pendente",
@@ -156,11 +154,10 @@ const paymentMethodIcons = {
   debit: CreditCard,
 };
 
-// Order Details component
 const OrderDetail = ({ order, onClose }: OrderDetailProps) => {
   const [isUpdating, setIsUpdating] = useState(false);
-  const [status, setStatus] = useState(order?.status || "pending");
-  const [paymentStatus, setPaymentStatus] = useState(order?.payment_status || "pending");
+  const [status, setStatus] = useState<Order["status"]>(order?.status || "pending");
+  const [paymentStatus, setPaymentStatus] = useState<Order["payment_status"]>(order?.payment_status || "pending");
   const [orderItems, setOrderItems] = useState<{ product: { name: string }, quantity: number, unit_price: number }[]>([]);
   const queryClient = useQueryClient();
 
@@ -261,7 +258,10 @@ const OrderDetail = ({ order, onClose }: OrderDetailProps) => {
           <div className="space-y-4">
             <div>
               <Label htmlFor="orderStatus">Status</Label>
-              <Select value={status} onValueChange={setStatus}>
+              <Select 
+                value={status} 
+                onValueChange={(value: Order["status"]) => setStatus(value)}
+              >
                 <SelectTrigger className="w-full">
                   <SelectValue />
                 </SelectTrigger>
@@ -280,7 +280,10 @@ const OrderDetail = ({ order, onClose }: OrderDetailProps) => {
             
             <div>
               <Label htmlFor="paymentStatus">Status do Pagamento</Label>
-              <Select value={paymentStatus} onValueChange={setPaymentStatus}>
+              <Select 
+                value={paymentStatus} 
+                onValueChange={(value: Order["payment_status"]) => setPaymentStatus(value)}
+              >
                 <SelectTrigger className="w-full">
                   <SelectValue />
                 </SelectTrigger>
@@ -371,7 +374,6 @@ const Orders = () => {
   const [showFilters, setShowFilters] = useState(false);
   const queryClient = useQueryClient();
 
-  // Query to fetch orders with selected filters
   const { data: orders, isLoading } = useQuery({
     queryKey: ["orders", selectedDate, search, statusFilter, paymentStatusFilter, user?.id],
     queryFn: async () => {
@@ -383,9 +385,7 @@ const Orders = () => {
         .eq("vendor_id", user.id)
         .order("created_at", { ascending: false });
 
-      // Apply date filter if a date is selected
       if (selectedDate) {
-        // For calendar view, filter by delivery_date
         if (viewMode === "calendar") {
           const startOfDay = new Date(selectedDate);
           startOfDay.setHours(0, 0, 0, 0);
@@ -399,17 +399,14 @@ const Orders = () => {
         }
       }
 
-      // Apply search filter
       if (search) {
         query = query.ilike("customer_name", `%${search}%`);
       }
 
-      // Apply status filter
       if (statusFilter) {
         query = query.eq("status", statusFilter);
       }
 
-      // Apply payment status filter
       if (paymentStatusFilter) {
         query = query.eq("payment_status", paymentStatusFilter);
       }
@@ -426,7 +423,6 @@ const Orders = () => {
     enabled: !!user?.id,
   });
 
-  // Query to fetch delivery dates for calendar highlighting
   const { data: deliveryDates } = useQuery({
     queryKey: ["delivery-dates", user?.id],
     queryFn: async () => {
@@ -450,13 +446,11 @@ const Orders = () => {
     enabled: !!user?.id,
   });
 
-  // Function to open order detail
   const openOrderDetail = (order: Order) => {
     setSelectedOrder(order);
     setShowOrderDetail(true);
   };
 
-  // Function to handle quick status update
   const handleQuickStatusUpdate = async (orderId: string, newStatus: Order["status"]) => {
     try {
       const { error } = await supabase
@@ -474,7 +468,6 @@ const Orders = () => {
     }
   };
 
-  // Function to handle quick payment status update
   const handlePaymentStatusUpdate = async (orderId: string, newStatus: Order["payment_status"]) => {
     try {
       const { error } = await supabase
@@ -492,7 +485,6 @@ const Orders = () => {
     }
   };
 
-  // Calendar view component
   const CalendarView = () => (
     <div className="grid gap-4 md:grid-cols-2">
       <div className="space-y-4">
@@ -701,7 +693,6 @@ const Orders = () => {
     </div>
   );
 
-  // List view component
   const ListView = () => (
     <Card>
       <CardHeader>
