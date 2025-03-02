@@ -1,8 +1,23 @@
-import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { format } from "date-fns";
+
+import { useState, useEffect } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { format, isEqual } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { Calendar as CalendarIcon, Package, Search, Plus } from "lucide-react";
+import { 
+  Calendar as CalendarIcon, 
+  Package, 
+  Search, 
+  Filter,
+  CheckCircle,
+  XCircle,
+  Clock,
+  TruckIcon,
+  RefreshCcw,
+  ChevronDown,
+  Banknote,
+  CreditCard,
+  Receipt
+} from "lucide-react";
 import { Calendar } from "@/components/ui/calendar";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -20,21 +35,64 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogTrigger,
+  DialogFooter,
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "@/components/ui/tabs";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Badge } from "@/components/ui/badge";
+import { useAuth } from "@/contexts/AuthContext";
+import { formatCurrency } from "@/lib/utils";
 
 type Order = {
   id: string;
   customer_name: string;
+  customer_phone: string | null;
   created_at: string;
+  delivery_date: string | null;
   total_amount: number;
   status: "pending" | "preparing" | "delivered" | "cancelled";
-  delivery_date: string | null;
-  payment_method?: string;
-  delivery_method?: string;
-  notes?: string;
-  discount_amount?: number;
+  payment_status: "pending" | "paid" | "cancelled";
+  payment_method: string;
+  sale_origin: string | null;
+  sale_type: "online" | "manual";
+  seller_notes: string | null;
+  discount_amount: number;
 };
 
 type OrderProduct = {
@@ -44,58 +102,316 @@ type OrderProduct = {
   quantity: number;
 };
 
+interface OrderDetailProps {
+  order: Order | null;
+  onClose: () => void;
+}
+
+// Configuration for status display
 const statusConfig = {
   pending: {
     label: "Pendente",
     className: "bg-yellow-100 text-yellow-800",
+    icon: Clock,
   },
   preparing: {
     label: "Em preparo",
     className: "bg-blue-100 text-blue-800",
+    icon: RefreshCcw,
   },
   delivered: {
     label: "Entregue",
     className: "bg-green-100 text-green-800",
+    icon: CheckCircle,
   },
   cancelled: {
     label: "Cancelado",
     className: "bg-red-100 text-red-800",
+    icon: XCircle,
   },
 };
 
-const Orders = () => {
-  const [search, setSearch] = useState("");
-  const [date, setDate] = useState<Date | undefined>(new Date());
-  const [isUpdating, setIsUpdating] = useState(false);
-  const [dialogOpen, setDialogOpen] = useState(false);
-  const [selectedProducts, setSelectedProducts] = useState<OrderProduct[]>([]);
-  const [selectedCustomerId, setSelectedCustomerId] = useState<string>("");
-  const [selectedAddressId, setSelectedAddressId] = useState<string>("");
-  const [paymentMethod, setPaymentMethod] = useState<string>("");
-  const [deliveryMethod, setDeliveryMethod] = useState<string>("");
-  const [notes, setNotes] = useState<string>("");
-  const [discountAmount, setDiscountAmount] = useState<number>(0);
+const paymentStatusConfig = {
+  pending: {
+    label: "Pendente",
+    className: "bg-yellow-100 text-yellow-800",
+    icon: Clock,
+  },
+  paid: {
+    label: "Pago",
+    className: "bg-green-100 text-green-800",
+    icon: CheckCircle,
+  },
+  cancelled: {
+    label: "Cancelado",
+    className: "bg-red-100 text-red-800",
+    icon: XCircle,
+  },
+};
 
-  const { data: orders, refetch } = useQuery({
-    queryKey: ["orders", date, search],
+const paymentMethodIcons = {
+  pix: Receipt,
+  cash: Banknote,
+  credit: CreditCard,
+  debit: CreditCard,
+};
+
+// Order Details component
+const OrderDetail = ({ order, onClose }: OrderDetailProps) => {
+  const [isUpdating, setIsUpdating] = useState(false);
+  const [status, setStatus] = useState(order?.status || "pending");
+  const [paymentStatus, setPaymentStatus] = useState(order?.payment_status || "pending");
+  const [orderItems, setOrderItems] = useState<{ product: { name: string }, quantity: number, unit_price: number }[]>([]);
+  const queryClient = useQueryClient();
+
+  useEffect(() => {
+    if (order) {
+      setStatus(order.status);
+      setPaymentStatus(order.payment_status);
+      fetchOrderItems(order.id);
+    }
+  }, [order]);
+
+  const fetchOrderItems = async (orderId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('order_items')
+        .select('quantity, unit_price, product:products(name)')
+        .eq('order_id', orderId);
+
+      if (error) throw error;
+      setOrderItems(data || []);
+    } catch (error) {
+      console.error("Error fetching order items:", error);
+    }
+  };
+
+  const updateOrder = async () => {
+    if (!order) return;
+    
+    setIsUpdating(true);
+    try {
+      const { error } = await supabase
+        .from('orders')
+        .update({ 
+          status, 
+          payment_status: paymentStatus 
+        })
+        .eq('id', order.id);
+
+      if (error) throw error;
+      
+      toast.success("Pedido atualizado com sucesso");
+      queryClient.invalidateQueries({ queryKey: ["orders"] });
+      onClose();
+    } catch (error) {
+      console.error("Error updating order:", error);
+      toast.error("Erro ao atualizar pedido");
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
+  if (!order) return null;
+
+  const StatusIcon = statusConfig[status]?.icon || Clock;
+  const PaymentStatusIcon = paymentStatusConfig[paymentStatus]?.icon || Clock;
+  const PaymentMethodIcon = (paymentMethodIcons as any)[order.payment_method] || Receipt;
+
+  return (
+    <div className="space-y-6">
+      <div className="grid gap-6 md:grid-cols-2">
+        <div>
+          <h3 className="text-lg font-medium mb-2">Detalhes do Cliente</h3>
+          <dl className="space-y-2">
+            <div className="flex justify-between">
+              <dt className="font-medium">Nome:</dt>
+              <dd>{order.customer_name}</dd>
+            </div>
+            {order.customer_phone && (
+              <div className="flex justify-between">
+                <dt className="font-medium">Telefone:</dt>
+                <dd>{order.customer_phone}</dd>
+              </div>
+            )}
+            <div className="flex justify-between">
+              <dt className="font-medium">Data do Pedido:</dt>
+              <dd>{format(new Date(order.created_at), "PPP - HH:mm", { locale: ptBR })}</dd>
+            </div>
+            {order.delivery_date && (
+              <div className="flex justify-between">
+                <dt className="font-medium">Data de Entrega:</dt>
+                <dd>{format(new Date(order.delivery_date), "PPP - HH:mm", { locale: ptBR })}</dd>
+              </div>
+            )}
+            <div className="flex justify-between">
+              <dt className="font-medium">Origem:</dt>
+              <dd>{order.sale_origin || "-"}</dd>
+            </div>
+            <div className="flex justify-between">
+              <dt className="font-medium">Tipo:</dt>
+              <dd>{order.sale_type === "online" ? "Online" : "Manual"}</dd>
+            </div>
+          </dl>
+        </div>
+        
+        <div>
+          <h3 className="text-lg font-medium mb-2">Status do Pedido</h3>
+          
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="orderStatus">Status</Label>
+              <Select value={status} onValueChange={setStatus}>
+                <SelectTrigger className="w-full">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {Object.entries(statusConfig).map(([value, config]) => (
+                    <SelectItem key={value} value={value}>
+                      <div className="flex items-center">
+                        <config.icon className="h-4 w-4 mr-2" />
+                        {config.label}
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            
+            <div>
+              <Label htmlFor="paymentStatus">Status do Pagamento</Label>
+              <Select value={paymentStatus} onValueChange={setPaymentStatus}>
+                <SelectTrigger className="w-full">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {Object.entries(paymentStatusConfig).map(([value, config]) => (
+                    <SelectItem key={value} value={value}>
+                      <div className="flex items-center">
+                        <config.icon className="h-4 w-4 mr-2" />
+                        {config.label}
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2">
+                <PaymentMethodIcon className="h-4 w-4" />
+                <span className="text-sm">
+                  Pagamento: {order.payment_method === "pix" ? "PIX" :
+                  order.payment_method === "cash" ? "Dinheiro" :
+                  order.payment_method === "credit" ? "Cartão de Crédito" :
+                  order.payment_method === "debit" ? "Cartão de Débito" : 
+                  order.payment_method}
+                </span>
+              </div>
+              <span className="text-lg font-bold">{formatCurrency(order.total_amount)}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <div>
+        <h3 className="text-lg font-medium mb-2">Itens do Pedido</h3>
+        <div className="border rounded-md">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Produto</TableHead>
+                <TableHead className="text-right">Qtd</TableHead>
+                <TableHead className="text-right">Preço</TableHead>
+                <TableHead className="text-right">Subtotal</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {orderItems.map((item, index) => (
+                <TableRow key={index}>
+                  <TableCell>{item.product.name}</TableCell>
+                  <TableCell className="text-right">{item.quantity}</TableCell>
+                  <TableCell className="text-right">{formatCurrency(item.unit_price)}</TableCell>
+                  <TableCell className="text-right">{formatCurrency(item.quantity * item.unit_price)}</TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
+      </div>
+      
+      {order.seller_notes && (
+        <div>
+          <h3 className="text-lg font-medium mb-2">Observações</h3>
+          <p className="p-3 bg-gray-50 rounded-md">{order.seller_notes}</p>
+        </div>
+      )}
+      
+      <div className="flex justify-end space-x-2">
+        <Button variant="outline" onClick={onClose}>
+          Fechar
+        </Button>
+        <Button onClick={updateOrder} disabled={isUpdating}>
+          {isUpdating ? "Salvando..." : "Salvar Alterações"}
+        </Button>
+      </div>
+    </div>
+  );
+};
+
+const Orders = () => {
+  const { user } = useAuth();
+  const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
+  const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState<string | undefined>(undefined);
+  const [paymentStatusFilter, setPaymentStatusFilter] = useState<string | undefined>(undefined);
+  const [viewMode, setViewMode] = useState<"list" | "calendar">("calendar");
+  const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
+  const [showOrderDetail, setShowOrderDetail] = useState(false);
+  const [showFilters, setShowFilters] = useState(false);
+  const queryClient = useQueryClient();
+
+  // Query to fetch orders with selected filters
+  const { data: orders, isLoading } = useQuery({
+    queryKey: ["orders", selectedDate, search, statusFilter, paymentStatusFilter, user?.id],
     queryFn: async () => {
+      if (!user?.id) return [];
+
       let query = supabase
         .from("orders")
         .select("*")
+        .eq("vendor_id", user.id)
         .order("created_at", { ascending: false });
 
-      if (date) {
-        const startDate = new Date(date);
-        startDate.setHours(0, 0, 0, 0);
-        const endDate = new Date(date);
-        endDate.setHours(23, 59, 59, 999);
-        query = query
-          .gte("delivery_date", startDate.toISOString())
-          .lte("delivery_date", endDate.toISOString());
+      // Apply date filter if a date is selected
+      if (selectedDate) {
+        // For calendar view, filter by delivery_date
+        if (viewMode === "calendar") {
+          const startOfDay = new Date(selectedDate);
+          startOfDay.setHours(0, 0, 0, 0);
+          
+          const endOfDay = new Date(selectedDate);
+          endOfDay.setHours(23, 59, 59, 999);
+          
+          query = query
+            .gte("delivery_date", startOfDay.toISOString())
+            .lte("delivery_date", endOfDay.toISOString());
+        }
       }
 
+      // Apply search filter
       if (search) {
         query = query.ilike("customer_name", `%${search}%`);
+      }
+
+      // Apply status filter
+      if (statusFilter) {
+        query = query.eq("status", statusFilter);
+      }
+
+      // Apply payment status filter
+      if (paymentStatusFilter) {
+        query = query.eq("payment_status", paymentStatusFilter);
       }
 
       const { data, error } = await query;
@@ -107,14 +423,19 @@ const Orders = () => {
 
       return data as Order[];
     },
+    enabled: !!user?.id,
   });
 
+  // Query to fetch delivery dates for calendar highlighting
   const { data: deliveryDates } = useQuery({
-    queryKey: ["delivery-dates"],
+    queryKey: ["delivery-dates", user?.id],
     queryFn: async () => {
+      if (!user?.id) return [];
+
       const { data, error } = await supabase
         .from("orders")
         .select("delivery_date")
+        .eq("vendor_id", user?.id)
         .not("delivery_date", "is", null);
 
       if (error) {
@@ -122,51 +443,21 @@ const Orders = () => {
         throw error;
       }
 
-      return data.map((d) => new Date(d.delivery_date!));
+      return data
+        .map((d) => d.delivery_date ? new Date(d.delivery_date) : null)
+        .filter((d): d is Date => d !== null);
     },
+    enabled: !!user?.id,
   });
 
-  const { data: products } = useQuery({
-    queryKey: ["products"],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("products")
-        .select("*")
-        .eq("active", true);
+  // Function to open order detail
+  const openOrderDetail = (order: Order) => {
+    setSelectedOrder(order);
+    setShowOrderDetail(true);
+  };
 
-      if (error) throw error;
-      return data;
-    },
-  });
-
-  const { data: customers } = useQuery({
-    queryKey: ["customers"],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("customers")
-        .select("*");
-
-      if (error) throw error;
-      return data;
-    },
-  });
-
-  const { data: addresses } = useQuery({
-    queryKey: ["addresses", selectedCustomerId],
-    enabled: !!selectedCustomerId,
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("customer_addresses")
-        .select("*")
-        .eq("customer_id", selectedCustomerId);
-
-      if (error) throw error;
-      return data;
-    },
-  });
-
-  const updateOrderStatus = async (orderId: string, newStatus: Order["status"]) => {
-    setIsUpdating(true);
+  // Function to handle quick status update
+  const handleQuickStatusUpdate = async (orderId: string, newStatus: Order["status"]) => {
     try {
       const { error } = await supabase
         .from("orders")
@@ -176,128 +467,41 @@ const Orders = () => {
       if (error) throw error;
 
       toast.success("Status atualizado com sucesso");
-      refetch();
+      queryClient.invalidateQueries({ queryKey: ["orders"] });
     } catch (error) {
       toast.error("Erro ao atualizar status");
       console.error(error);
-    } finally {
-      setIsUpdating(false);
     }
   };
 
-  const handleAddProduct = (productId: string) => {
-    const product = products?.find(p => p.id === productId);
-    if (!product) return;
-
-    setSelectedProducts(prev => {
-      const existing = prev.find(p => p.id === productId);
-      if (existing) {
-        return prev.map(p =>
-          p.id === productId
-            ? { ...p, quantity: p.quantity + 1 }
-            : p
-        );
-      }
-      return [...prev, { ...product, quantity: 1 }];
-    });
-  };
-
-  const handleUpdateQuantity = (productId: string, quantity: number) => {
-    setSelectedProducts(prev =>
-      prev.map(p =>
-        p.id === productId
-          ? { ...p, quantity: Math.max(0, quantity) }
-          : p
-      ).filter(p => p.quantity > 0)
-    );
-  };
-
-  const calculateTotal = () => {
-    const subtotal = selectedProducts.reduce(
-      (sum, product) => sum + product.price * product.quantity,
-      0
-    );
-    return subtotal - (discountAmount || 0);
-  };
-
-  const handleCreateOrder = async () => {
-    if (!selectedCustomerId || !selectedAddressId || selectedProducts.length === 0) {
-      toast.error("Preencha todos os campos obrigatórios");
-      return;
-    }
-
-    setIsUpdating(true);
+  // Function to handle quick payment status update
+  const handlePaymentStatusUpdate = async (orderId: string, newStatus: Order["payment_status"]) => {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error("Usuário não autenticado");
-
-      const customer = customers?.find(c => c.id === selectedCustomerId);
-      
-      const orderData = {
-        customer_id: selectedCustomerId,
-        customer_name: customer?.full_name || "",
-        address_id: selectedAddressId,
-        vendor_id: user.id,
-        total_amount: calculateTotal(),
-        payment_method: paymentMethod,
-        delivery_method: deliveryMethod,
-        notes: notes || null,
-        discount_amount: discountAmount || 0,
-        status: "pending",
-      };
-
-      const { data: order, error: orderError } = await supabase
+      const { error } = await supabase
         .from("orders")
-        .insert(orderData)
-        .select()
-        .single();
+        .update({ payment_status: newStatus })
+        .eq("id", orderId);
 
-      if (orderError) throw orderError;
+      if (error) throw error;
 
-      const orderItems = selectedProducts.map(product => ({
-        order_id: order.id,
-        product_id: product.id,
-        quantity: product.quantity,
-        unit_price: product.price,
-      }));
-
-      const { error: itemsError } = await supabase
-        .from("order_items")
-        .insert(orderItems);
-
-      if (itemsError) throw itemsError;
-
-      toast.success("Pedido criado com sucesso!");
-      setDialogOpen(false);
-      refetch();
+      toast.success("Status do pagamento atualizado");
+      queryClient.invalidateQueries({ queryKey: ["orders"] });
     } catch (error) {
+      toast.error("Erro ao atualizar pagamento");
       console.error(error);
-      toast.error("Erro ao criar pedido");
-    } finally {
-      setIsUpdating(false);
     }
   };
 
-  return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-display mb-1">Pedidos</h1>
-          <p className="text-neutral-600">Gerencie seus pedidos</p>
-        </div>
-        <Button onClick={() => setDialogOpen(true)}>
-          <Plus size={20} className="mr-2" />
-          Novo Pedido
-        </Button>
-      </div>
-
-      <div className="flex gap-6">
-        <div className="w-[350px] space-y-4">
-          <div className="card">
+  // Calendar view component
+  const CalendarView = () => (
+    <div className="grid gap-4 md:grid-cols-2">
+      <div className="space-y-4">
+        <Card>
+          <CardContent className="pt-6">
             <Calendar
               mode="single"
-              selected={date}
-              onSelect={setDate}
+              selected={selectedDate}
+              onSelect={setSelectedDate}
               className="rounded-md border"
               locale={ptBR}
               modifiers={{
@@ -310,10 +514,206 @@ const Orders = () => {
                 },
               }}
             />
-          </div>
+          </CardContent>
+        </Card>
 
-          <div className="card space-y-4">
-            <div className="flex items-center border rounded-lg px-3">
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg">Filtros</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              <div className="flex items-center border rounded-lg px-3">
+                <Search className="text-neutral-400" size={20} />
+                <Input
+                  placeholder="Buscar por nome de cliente..."
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  className="border-0 focus-visible:ring-0"
+                />
+              </div>
+
+              <div>
+                <Label>Status do Pedido</Label>
+                <Select value={statusFilter} onValueChange={setStatusFilter}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Todos os status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="">Todos</SelectItem>
+                    {Object.entries(statusConfig).map(([value, config]) => (
+                      <SelectItem key={value} value={value}>
+                        <div className="flex items-center">
+                          <config.icon className="h-4 w-4 mr-2" />
+                          {config.label}
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div>
+                <Label>Status do Pagamento</Label>
+                <Select value={paymentStatusFilter} onValueChange={setPaymentStatusFilter}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Todos os status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="">Todos</SelectItem>
+                    {Object.entries(paymentStatusConfig).map(([value, config]) => (
+                      <SelectItem key={value} value={value}>
+                        <div className="flex items-center">
+                          <config.icon className="h-4 w-4 mr-2" />
+                          {config.label}
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      <div>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between">
+            <div>
+              <CardTitle>
+                Pedidos para{" "}
+                {selectedDate
+                  ? format(selectedDate, "dd 'de' MMMM", { locale: ptBR })
+                  : "Hoje"}
+              </CardTitle>
+              <CardDescription>
+                {orders?.length || 0} pedidos encontrados
+              </CardDescription>
+            </div>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setViewMode("list")}
+              >
+                Ver Lista Completa
+              </Button>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              {isLoading ? (
+                <div className="flex justify-center p-4">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                </div>
+              ) : orders?.length === 0 ? (
+                <div className="text-center py-12 text-neutral-600">
+                  <Package className="mx-auto mb-4 text-neutral-400" size={48} />
+                  <p>Nenhum pedido encontrado</p>
+                </div>
+              ) : (
+                orders?.map((order) => (
+                  <Card
+                    key={order.id}
+                    className="overflow-hidden cursor-pointer hover:shadow-md transition-shadow"
+                    onClick={() => openOrderDetail(order)}
+                  >
+                    <CardContent className="p-0">
+                      <div className="flex justify-between items-center p-4 border-b">
+                        <div>
+                          <h3 className="font-medium flex items-center gap-2">
+                            {order.customer_name}
+                            <Badge
+                              variant="outline"
+                              className={statusConfig[order.status].className}
+                            >
+                              {statusConfig[order.status].label}
+                            </Badge>
+                          </h3>
+                          <p className="text-sm text-muted-foreground">
+                            {order.delivery_date
+                              ? format(new Date(order.delivery_date), "dd/MM/yyyy HH:mm", { locale: ptBR })
+                              : "Sem data de entrega"}
+                          </p>
+                        </div>
+                        <div className="text-right">
+                          <p className="font-bold">{formatCurrency(order.total_amount)}</p>
+                          <Badge
+                            variant="outline"
+                            className={paymentStatusConfig[order.payment_status].className}
+                          >
+                            {paymentStatusConfig[order.payment_status].label}
+                          </Badge>
+                        </div>
+                      </div>
+                      <div className="p-4 flex justify-between items-center">
+                        <div className="text-sm text-muted-foreground">
+                          Pedido #{order.id.substring(0, 8)}
+                        </div>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+                            <Button variant="ghost" size="sm">
+                              Ações <ChevronDown className="ml-1 h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuLabel>Status do Pedido</DropdownMenuLabel>
+                            {Object.entries(statusConfig).map(([status, config]) => (
+                              <DropdownMenuItem
+                                key={status}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleQuickStatusUpdate(order.id, status as Order["status"]);
+                                }}
+                                disabled={order.status === status}
+                              >
+                                <config.icon className="mr-2 h-4 w-4" />
+                                {config.label}
+                              </DropdownMenuItem>
+                            ))}
+                            <DropdownMenuSeparator />
+                            <DropdownMenuLabel>Status do Pagamento</DropdownMenuLabel>
+                            {Object.entries(paymentStatusConfig).map(([status, config]) => (
+                              <DropdownMenuItem
+                                key={status}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handlePaymentStatusUpdate(order.id, status as Order["payment_status"]);
+                                }}
+                                disabled={order.payment_status === status}
+                              >
+                                <config.icon className="mr-2 h-4 w-4" />
+                                {config.label}
+                              </DropdownMenuItem>
+                            ))}
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    </div>
+  );
+
+  // List view component
+  const ListView = () => (
+    <Card>
+      <CardHeader>
+        <div className="flex flex-col md:flex-row justify-between md:items-center gap-4">
+          <div>
+            <CardTitle>Todos os Pedidos</CardTitle>
+            <CardDescription>
+              {orders?.length || 0} pedidos encontrados
+            </CardDescription>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="flex items-center border rounded-lg px-3 w-full md:w-auto">
               <Search className="text-neutral-400" size={20} />
               <Input
                 placeholder="Buscar pedidos..."
@@ -322,268 +722,263 @@ const Orders = () => {
                 className="border-0 focus-visible:ring-0"
               />
             </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowFilters(!showFilters)}
+            >
+              <Filter className="h-4 w-4 mr-2" />
+              Filtros
+            </Button>
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button variant="outline" size="sm">
+                  <CalendarIcon className="h-4 w-4 mr-2" />
+                  {selectedDate ? (
+                    format(selectedDate, "PPP", { locale: ptBR })
+                  ) : (
+                    "Selecionar data"
+                  )}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0">
+                <Calendar
+                  mode="single"
+                  selected={selectedDate}
+                  onSelect={setSelectedDate}
+                  initialFocus
+                />
+              </PopoverContent>
+            </Popover>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setViewMode("calendar")}
+            >
+              Ver Calendário
+            </Button>
           </div>
         </div>
-
-        <div className="flex-1 space-y-4">
-          <div className="card">
-            <div className="flex items-center space-x-4 mb-6">
-              <div className="h-12 w-12 rounded-full bg-primary-light flex items-center justify-center">
-                <Package className="text-primary" size={20} />
-              </div>
-              <div>
-                <h2 className="text-lg font-medium">
-                  Pedidos do dia{" "}
-                  {date
-                    ? format(date, "dd 'de' MMMM", { locale: ptBR })
-                    : ""}
-                </h2>
-                <p className="text-neutral-600">
-                  {orders?.length || 0} pedidos encontrados
-                </p>
-              </div>
+        
+        {showFilters && (
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4 p-4 bg-muted/50 rounded-lg">
+            <div>
+              <Label>Status do Pedido</Label>
+              <Select value={statusFilter} onValueChange={setStatusFilter}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Todos os status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="">Todos</SelectItem>
+                  {Object.entries(statusConfig).map(([value, config]) => (
+                    <SelectItem key={value} value={value}>
+                      <div className="flex items-center">
+                        <config.icon className="h-4 w-4 mr-2" />
+                        {config.label}
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
 
-            <div className="space-y-4">
-              {orders?.map((order) => (
-                <div
-                  key={order.id}
-                  className="flex items-center justify-between p-4 border rounded-lg"
-                >
-                  <div>
-                    <h3 className="font-medium">
-                      Pedido #{order.id.slice(0, 8)}
-                    </h3>
-                    <p className="text-sm text-neutral-600">
-                      {order.customer_name} • R${" "}
-                      {order.total_amount.toFixed(2)}
-                    </p>
-                    {order.delivery_date && (
-                      <p className="text-sm text-neutral-600">
-                        Entrega:{" "}
-                        {format(new Date(order.delivery_date), "dd/MM/yyyy HH:mm")}
-                      </p>
-                    )}
-                  </div>
-                  <div className="flex items-center gap-4">
-                    <span
-                      className={`px-3 py-1 rounded-full text-sm ${
-                        statusConfig[order.status].className
-                      }`}
-                    >
-                      {statusConfig[order.status].label}
-                    </span>
-                    <Select
-                      value={order.status}
-                      onValueChange={(value: Order["status"]) =>
-                        updateOrderStatus(order.id, value)
-                      }
-                      disabled={isUpdating}
-                    >
-                      <SelectTrigger className="w-[140px]">
-                        <SelectValue placeholder="Alterar status" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {Object.entries(statusConfig).map(([value, { label }]) => (
-                          <SelectItem key={value} value={value}>
-                            {label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-              ))}
-              {(!orders || orders.length === 0) && (
-                <div className="text-center py-12 text-neutral-600">
-                  <Package className="mx-auto mb-4 text-neutral-400" size={48} />
-                  <p>Nenhum pedido encontrado</p>
-                </div>
-              )}
+            <div>
+              <Label>Status do Pagamento</Label>
+              <Select value={paymentStatusFilter} onValueChange={setPaymentStatusFilter}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Todos os status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="">Todos</SelectItem>
+                  {Object.entries(paymentStatusConfig).map(([value, config]) => (
+                    <SelectItem key={value} value={value}>
+                      <div className="flex items-center">
+                        <config.icon className="h-4 w-4 mr-2" />
+                        {config.label}
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="flex items-end">
+              <Button
+                variant="outline"
+                className="ml-auto"
+                onClick={() => {
+                  setStatusFilter(undefined);
+                  setPaymentStatusFilter(undefined);
+                  setSearch("");
+                }}
+              >
+                Limpar Filtros
+              </Button>
             </div>
           </div>
+        )}
+      </CardHeader>
+      <CardContent>
+        {isLoading ? (
+          <div className="flex justify-center p-8">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+          </div>
+        ) : orders?.length === 0 ? (
+          <div className="text-center py-12 text-neutral-600">
+            <Package className="mx-auto mb-4 text-neutral-400" size={48} />
+            <p>Nenhum pedido encontrado</p>
+          </div>
+        ) : (
+          <div className="border rounded-md">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Cliente</TableHead>
+                  <TableHead>Data do Pedido</TableHead>
+                  <TableHead>Entrega</TableHead>
+                  <TableHead>Total</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Pagamento</TableHead>
+                  <TableHead className="text-right">Ações</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {orders?.map((order) => {
+                  const StatusIcon = statusConfig[order.status]?.icon || Clock;
+                  const PaymentStatusIcon = paymentStatusConfig[order.payment_status]?.icon || Clock;
+                  
+                  return (
+                    <TableRow key={order.id} onClick={() => openOrderDetail(order)} className="cursor-pointer hover:bg-muted">
+                      <TableCell>
+                        <div className="font-medium">{order.customer_name}</div>
+                        <div className="text-sm text-muted-foreground">
+                          #{order.id.substring(0, 8)}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        {format(new Date(order.created_at), "dd/MM/yyyy", { locale: ptBR })}
+                      </TableCell>
+                      <TableCell>
+                        {order.delivery_date ? (
+                          format(new Date(order.delivery_date), "dd/MM/yyyy", { locale: ptBR })
+                        ) : (
+                          <span className="text-muted-foreground">Não definido</span>
+                        )}
+                      </TableCell>
+                      <TableCell>{formatCurrency(order.total_amount)}</TableCell>
+                      <TableCell>
+                        <Badge
+                          variant="outline"
+                          className={statusConfig[order.status].className}
+                        >
+                          <StatusIcon className="h-3 w-3 mr-1" />
+                          {statusConfig[order.status].label}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <Badge
+                          variant="outline"
+                          className={paymentStatusConfig[order.payment_status].className}
+                        >
+                          <PaymentStatusIcon className="h-3 w-3 mr-1" />
+                          {paymentStatusConfig[order.payment_status].label}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+                            <Button variant="ghost" size="sm">
+                              <span className="sr-only">Abrir menu</span>
+                              <ChevronDown className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem onClick={(e) => {
+                              e.stopPropagation();
+                              openOrderDetail(order);
+                            }}>
+                              Ver detalhes
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuLabel>Status do Pedido</DropdownMenuLabel>
+                            {Object.entries(statusConfig).map(([status, config]) => (
+                              <DropdownMenuItem
+                                key={status}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleQuickStatusUpdate(order.id, status as Order["status"]);
+                                }}
+                                disabled={order.status === status}
+                              >
+                                <config.icon className="mr-2 h-4 w-4" />
+                                {config.label}
+                              </DropdownMenuItem>
+                            ))}
+                            <DropdownMenuSeparator />
+                            <DropdownMenuLabel>Status do Pagamento</DropdownMenuLabel>
+                            {Object.entries(paymentStatusConfig).map(([status, config]) => (
+                              <DropdownMenuItem
+                                key={status}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handlePaymentStatusUpdate(order.id, status as Order["payment_status"]);
+                                }}
+                                disabled={order.payment_status === status}
+                              >
+                                <config.icon className="mr-2 h-4 w-4" />
+                                {config.label}
+                              </DropdownMenuItem>
+                            ))}
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">Pedidos</h1>
+          <p className="text-muted-foreground">
+            Gerencie todos os pedidos online e vendas registradas
+          </p>
+        </div>
+        <div className="flex gap-2">
+          <Tabs value={viewMode} onValueChange={(v) => setViewMode(v as "list" | "calendar")}>
+            <TabsList>
+              <TabsTrigger value="calendar">
+                <CalendarIcon className="h-4 w-4 mr-2" />
+                Calendário
+              </TabsTrigger>
+              <TabsTrigger value="list">
+                <Package className="h-4 w-4 mr-2" />
+                Lista
+              </TabsTrigger>
+            </TabsList>
+          </Tabs>
         </div>
       </div>
 
-      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="max-w-3xl">
+      {viewMode === "calendar" ? <CalendarView /> : <ListView />}
+
+      <Dialog open={showOrderDetail} onOpenChange={setShowOrderDetail}>
+        <DialogContent className="sm:max-w-[800px] max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Novo Pedido</DialogTitle>
+            <DialogTitle>Detalhes do Pedido</DialogTitle>
           </DialogHeader>
-
-          <div className="space-y-6">
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <Label>Cliente *</Label>
-                <Select
-                  value={selectedCustomerId}
-                  onValueChange={setSelectedCustomerId}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selecione um cliente" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {customers?.map((customer) => (
-                      <SelectItem key={customer.id} value={customer.id}>
-                        {customer.full_name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              {selectedCustomerId && (
-                <div className="space-y-2">
-                  <Label>Endereço de Entrega *</Label>
-                  <Select
-                    value={selectedAddressId}
-                    onValueChange={setSelectedAddressId}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecione um endereço" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {addresses?.map((address) => (
-                        <SelectItem key={address.id} value={address.id}>
-                          {address.street}, {address.number} - {address.neighborhood}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              )}
-            </div>
-
-            <div className="space-y-4">
-              <Label>Produtos *</Label>
-              <div className="space-y-2">
-                <Select onValueChange={handleAddProduct}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Adicionar produto" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {products?.map((product) => (
-                      <SelectItem key={product.id} value={product.id}>
-                        {product.name} - R$ {product.price.toFixed(2)}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-
-                <div className="space-y-2 mt-4">
-                  {selectedProducts.map((product) => (
-                    <div
-                      key={product.id}
-                      className="flex items-center justify-between p-2 border rounded"
-                    >
-                      <div>
-                        <p className="font-medium">{product.name}</p>
-                        <p className="text-sm text-neutral-600">
-                          R$ {product.price.toFixed(2)}
-                        </p>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <button
-                          type="button"
-                          className="p-1 hover:bg-neutral-100 rounded"
-                          onClick={() =>
-                            handleUpdateQuantity(product.id, product.quantity - 1)
-                          }
-                        >
-                          -
-                        </button>
-                        <span className="w-8 text-center">{product.quantity}</span>
-                        <button
-                          type="button"
-                          className="p-1 hover:bg-neutral-100 rounded"
-                          onClick={() =>
-                            handleUpdateQuantity(product.id, product.quantity + 1)
-                          }
-                        >
-                          +
-                        </button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>Forma de Pagamento *</Label>
-                <Select value={paymentMethod} onValueChange={setPaymentMethod}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selecione" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="money">Dinheiro</SelectItem>
-                    <SelectItem value="credit_card">Cartão de Crédito</SelectItem>
-                    <SelectItem value="debit_card">Cartão de Débito</SelectItem>
-                    <SelectItem value="pix">PIX</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-2">
-                <Label>Método de Entrega *</Label>
-                <Select value={deliveryMethod} onValueChange={setDeliveryMethod}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selecione" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="delivery">Entrega</SelectItem>
-                    <SelectItem value="pickup">Retirada</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>Desconto</Label>
-                <Input
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  value={discountAmount || ""}
-                  onChange={(e) => setDiscountAmount(Number(e.target.value))}
-                  placeholder="0.00"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label>Total</Label>
-                <Input
-                  value={`R$ ${calculateTotal().toFixed(2)}`}
-                  readOnly
-                  disabled
-                />
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <Label>Notas do Pedido</Label>
-              <Textarea
-                value={notes}
-                onChange={(e) => setNotes(e.target.value)}
-                placeholder="Observações sobre o pedido..."
-              />
-            </div>
-
-            <div className="flex justify-end gap-2">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => setDialogOpen(false)}
-              >
-                Cancelar
-              </Button>
-              <Button onClick={handleCreateOrder} disabled={isUpdating}>
-                {isUpdating ? "Criando..." : "Criar Pedido"}
-              </Button>
-            </div>
-          </div>
+          <OrderDetail 
+            order={selectedOrder} 
+            onClose={() => setShowOrderDetail(false)} 
+          />
         </DialogContent>
       </Dialog>
     </div>

@@ -9,7 +9,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Plus, ShoppingCart } from "lucide-react";
+import { ShoppingCart, Calendar } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -25,6 +25,14 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { formatCurrency } from "@/lib/utils";
+import { format } from "date-fns";
+import { ptBR } from "date-fns/locale";
+import { Calendar as CalendarComponent } from "@/components/ui/calendar";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 
 export function SaleModal() {
   const [open, setOpen] = useState(false);
@@ -40,6 +48,8 @@ export function SaleModal() {
     origin: "",
     customer: "",
     notes: "",
+    orderDate: new Date(),
+    deliveryDate: undefined as Date | undefined,
   });
 
   // Calculate total
@@ -95,6 +105,10 @@ export function SaleModal() {
         throw new Error("Preencha todos os campos obrigatórios");
       }
 
+      if (!formData.deliveryDate) {
+        throw new Error("Selecione uma data de entrega");
+      }
+
       // Create the order first
       const { data: orderData, error: orderError } = await supabase
         .from("orders")
@@ -110,6 +124,8 @@ export function SaleModal() {
           payment_status: "pending",
           vendor_id: user.id,
           sale_type: "manual",
+          created_at: formData.orderDate.toISOString(),
+          delivery_date: formData.deliveryDate ? formData.deliveryDate.toISOString() : null,
         })
         .select()
         .single();
@@ -144,6 +160,8 @@ export function SaleModal() {
         origin: "",
         customer: "",
         notes: "",
+        orderDate: new Date(),
+        deliveryDate: undefined,
       });
       
       // Refresh data after saving
@@ -151,7 +169,10 @@ export function SaleModal() {
       queryClient.invalidateQueries({ queryKey: ["sales-metrics"] });
       queryClient.invalidateQueries({ queryKey: ["daily-sales"] });
       queryClient.invalidateQueries({ queryKey: ["top-products"] });
+      queryClient.invalidateQueries({ queryKey: ["orders"] });
       
+      // Reload page to show updated data
+      window.location.reload();
     } catch (error) {
       if (error instanceof Error) {
         toast.error(error.message);
@@ -230,6 +251,73 @@ export function SaleModal() {
               value={formData.price}
               onChange={(e) => setFormData({ ...formData, price: e.target.value })}
             />
+          </div>
+
+          <div className="grid grid-cols-4 items-center gap-4">
+            <Label htmlFor="orderDate" className="text-right">
+              Data do Pedido *
+            </Label>
+            <div className="col-span-3">
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className="w-full justify-start text-left font-normal"
+                  >
+                    <Calendar className="mr-2 h-4 w-4" />
+                    {formData.orderDate ? (
+                      format(formData.orderDate, "PPP", { locale: ptBR })
+                    ) : (
+                      <span>Selecione uma data</span>
+                    )}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0">
+                  <CalendarComponent
+                    mode="single"
+                    selected={formData.orderDate}
+                    onSelect={(date) => 
+                      date && setFormData({ ...formData, orderDate: date })
+                    }
+                    initialFocus
+                  />
+                </PopoverContent>
+              </Popover>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-4 items-center gap-4">
+            <Label htmlFor="deliveryDate" className="text-right">
+              Data de Entrega *
+            </Label>
+            <div className="col-span-3">
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className="w-full justify-start text-left font-normal"
+                  >
+                    <Calendar className="mr-2 h-4 w-4" />
+                    {formData.deliveryDate ? (
+                      format(formData.deliveryDate, "PPP", { locale: ptBR })
+                    ) : (
+                      <span>Selecione uma data</span>
+                    )}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0">
+                  <CalendarComponent
+                    mode="single"
+                    selected={formData.deliveryDate}
+                    onSelect={(date) =>
+                      date && setFormData({ ...formData, deliveryDate: date })
+                    }
+                    initialFocus
+                    disabled={(date) => date < new Date()}
+                  />
+                </PopoverContent>
+              </Popover>
+            </div>
           </div>
 
           <div className="grid grid-cols-4 items-center gap-4">
