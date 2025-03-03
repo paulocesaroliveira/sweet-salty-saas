@@ -92,6 +92,24 @@ export function IngredientDialog({ onSave, ingredient }: IngredientDialogProps) 
     }
   }, [ingredient]);
 
+  // Set default unit when type changes
+  useEffect(() => {
+    if (type && VALID_UNITS[type] && VALID_UNITS[type].length > 0) {
+      setUnit(VALID_UNITS[type][0].value);
+    }
+  }, [type]);
+
+  const calculateCostPerUnit = () => {
+    const cost = parseFloat(packageCost);
+    const amount = parseFloat(packageAmount);
+    
+    if (!isNaN(cost) && !isNaN(amount) && amount > 0) {
+      return (cost / amount).toFixed(3);
+    }
+    
+    return "0.000";
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -139,12 +157,12 @@ export function IngredientDialog({ onSave, ingredient }: IngredientDialogProps) 
       setOpen(false);
       resetForm();
     } catch (error) {
+      console.error("Erro ao salvar ingrediente:", error);
       toast.error(
         ingredient
           ? "Erro ao atualizar ingrediente"
           : "Erro ao adicionar ingrediente"
       );
-      console.error(error);
     } finally {
       setIsLoading(false);
     }
@@ -153,7 +171,7 @@ export function IngredientDialog({ onSave, ingredient }: IngredientDialogProps) 
   const resetForm = () => {
     setName("");
     setType("solid");
-    setUnit("");
+    setUnit("g"); // Default to grams
     setBrand("");
     setSupplier("");
     setCategory("");
@@ -161,7 +179,7 @@ export function IngredientDialog({ onSave, ingredient }: IngredientDialogProps) 
     setPackageAmount("");
   };
 
-  const availableUnits = VALID_UNITS[type];
+  const availableUnits = VALID_UNITS[type] || [];
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -222,7 +240,6 @@ export function IngredientDialog({ onSave, ingredient }: IngredientDialogProps) 
                 value={type} 
                 onValueChange={(value: "solid" | "liquid" | "pó") => {
                   setType(value);
-                  setUnit(""); 
                 }}
               >
                 <SelectTrigger>
@@ -303,11 +320,9 @@ export function IngredientDialog({ onSave, ingredient }: IngredientDialogProps) 
             </div>
           </div>
 
-          {packageAmount && packageCost && (
-            <div className="text-sm text-muted-foreground">
-              Custo por {unit}: R$ {(Number(packageCost) / Number(packageAmount)).toFixed(3)}
-            </div>
-          )}
+          <div className="text-sm text-muted-foreground">
+            Custo por {unit || 'unidade'}: R$ {calculateCostPerUnit()}
+          </div>
 
           <div className="flex justify-end gap-2">
             <Button
