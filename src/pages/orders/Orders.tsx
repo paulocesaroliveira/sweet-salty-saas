@@ -404,11 +404,11 @@ const Orders = () => {
         query = query.ilike("customer_name", `%${search}%`);
       }
 
-      if (statusFilter) {
+      if (statusFilter && statusFilter !== "all") {
         query = query.eq("status", statusFilter);
       }
 
-      if (paymentStatusFilter) {
+      if (paymentStatusFilter && paymentStatusFilter !== "all") {
         query = query.eq("payment_status", paymentStatusFilter);
       }
 
@@ -498,7 +498,7 @@ const Orders = () => {
               className="rounded-md border"
               locale={ptBR}
               modifiers={{
-                delivery: deliveryDates,
+                delivery: deliveryDates || [],
               }}
               modifiersStyles={{
                 delivery: {
@@ -529,14 +529,14 @@ const Orders = () => {
               <div>
                 <Label>Status do Pedido</Label>
                 <Select 
-                  value={statusFilter} 
+                  value={statusFilter || "all"} 
                   onValueChange={setStatusFilter}
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="Todos os status" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">Todos</SelectItem>
+                    <SelectItem value="all">Todos</SelectItem>
                     {Object.entries(statusConfig).map(([key, config]) => (
                       <SelectItem key={key} value={key}>
                         <div className="flex items-center">
@@ -552,14 +552,14 @@ const Orders = () => {
               <div>
                 <Label>Status do Pagamento</Label>
                 <Select 
-                  value={paymentStatusFilter} 
+                  value={paymentStatusFilter || "all"} 
                   onValueChange={setPaymentStatusFilter}
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="Todos os status" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">Todos</SelectItem>
+                    <SelectItem value="all">Todos</SelectItem>
                     {Object.entries(paymentStatusConfig).map(([key, config]) => (
                       <SelectItem key={key} value={key}>
                         <div className="flex items-center">
@@ -762,12 +762,15 @@ const Orders = () => {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4 p-4 bg-muted/50 rounded-lg">
             <div>
               <Label>Status do Pedido</Label>
-              <Select value={statusFilter} onValueChange={setStatusFilter}>
+              <Select 
+                value={statusFilter || "all"} 
+                onValueChange={setStatusFilter}
+              >
                 <SelectTrigger>
                   <SelectValue placeholder="Todos os status" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Todos</SelectItem>
+                  <SelectItem value="all">Todos</SelectItem>
                   {Object.entries(statusConfig).map(([key, config]) => (
                     <SelectItem key={key} value={key}>
                       <div className="flex items-center">
@@ -782,12 +785,15 @@ const Orders = () => {
 
             <div>
               <Label>Status do Pagamento</Label>
-              <Select value={paymentStatusFilter} onValueChange={setPaymentStatusFilter}>
+              <Select 
+                value={paymentStatusFilter || "all"} 
+                onValueChange={setPaymentStatusFilter}
+              >
                 <SelectTrigger>
                   <SelectValue placeholder="Todos os status" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Todos</SelectItem>
+                  <SelectItem value="all">Todos</SelectItem>
                   {Object.entries(paymentStatusConfig).map(([key, config]) => (
                     <SelectItem key={key} value={key}>
                       <div className="flex items-center">
