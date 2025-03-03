@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from "react";
 import { PlusCircle, Trash2, Plus, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
@@ -73,12 +74,12 @@ export function RecipeDialog({ recipeId, trigger, onSave }: RecipeDialogProps) {
 
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
+  const [category, setCategory] = useState("");
   
   const [recipeIngredients, setRecipeIngredients] = useState<RecipeIngredient[]>([]);
   const [selectedIngredientId, setSelectedIngredientId] = useState<string>("");
   const [selectedAmount, setSelectedAmount] = useState<string>("0");
   
-  const [category, setCategory] = useState("");
   const [servings, setServings] = useState("1");
   
   const [totalCost, setTotalCost] = useState(0);
@@ -327,6 +328,7 @@ export function RecipeDialog({ recipeId, trigger, onSave }: RecipeDialogProps) {
           <DialogTitle>{recipeId ? "Editar Receita" : "Nova Receita"}</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-6">
+          {/* Seção 1: Informações Básicas */}
           <div className="space-y-4 p-4 border rounded-lg">
             <h3 className="font-semibold text-lg">Informações Básicas</h3>
             <div>
@@ -337,6 +339,22 @@ export function RecipeDialog({ recipeId, trigger, onSave }: RecipeDialogProps) {
                 onChange={(e) => setName(e.target.value)}
                 placeholder="Ex: Brigadeiro Gourmet"
               />
+            </div>
+
+            <div>
+              <Label htmlFor="category">Categoria</Label>
+              <Select value={category} onValueChange={setCategory}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione uma categoria" />
+                </SelectTrigger>
+                <SelectContent>
+                  {CATEGORIES.map((cat) => (
+                    <SelectItem key={cat} value={cat}>
+                      {cat}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
 
             <div>
@@ -351,6 +369,7 @@ export function RecipeDialog({ recipeId, trigger, onSave }: RecipeDialogProps) {
             </div>
           </div>
 
+          {/* Seção 2: Ingredientes */}
           <div className="space-y-4 p-4 border rounded-lg">
             <h3 className="font-semibold text-lg">Ingredientes</h3>
             
@@ -445,39 +464,23 @@ export function RecipeDialog({ recipeId, trigger, onSave }: RecipeDialogProps) {
             )}
           </div>
 
+          {/* Seção 3: Porção/Unidade */}
           <div className="space-y-4 p-4 border rounded-lg">
-            <h3 className="font-semibold text-lg">Detalhes da Receita</h3>
+            <h3 className="font-semibold text-lg">Porção/Unidade</h3>
             
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
-                <Label htmlFor="category">Categoria</Label>
-                <Select value={category} onValueChange={setCategory}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selecione uma categoria" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {CATEGORIES.map((cat) => (
-                      <SelectItem key={cat} value={cat}>
-                        {cat}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div>
-                <Label htmlFor="servings">Porções*</Label>
-                <Input
-                  id="servings"
-                  type="number"
-                  min="1"
-                  value={servings}
-                  onChange={(e) => setServings(e.target.value)}
-                />
-              </div>
+            <div>
+              <Label htmlFor="servings">Quantidade de unidades ou porções que a receita produz*</Label>
+              <Input
+                id="servings"
+                type="number"
+                min="1"
+                value={servings}
+                onChange={(e) => setServings(e.target.value)}
+              />
             </div>
           </div>
 
+          {/* Seção 4: Custos */}
           <div className="space-y-2 p-4 border rounded-lg bg-muted/20">
             <h3 className="font-semibold text-lg">Custos</h3>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -486,7 +489,7 @@ export function RecipeDialog({ recipeId, trigger, onSave }: RecipeDialogProps) {
                 <p className="text-lg font-semibold">R$ {totalCost.toFixed(2)}</p>
               </div>
               <div>
-                <p className="text-sm text-muted-foreground">Custo por porção</p>
+                <p className="text-sm text-muted-foreground">Custo por porção/unidade</p>
                 <p className="text-lg font-semibold">R$ {costPerUnit.toFixed(2)}</p>
               </div>
             </div>
