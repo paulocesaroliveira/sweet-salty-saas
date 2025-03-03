@@ -52,6 +52,13 @@ type RecipeIngredient = {
   cost_per_unit?: number;
 };
 
+type IngredientPerServing = {
+  ingredient_id: string;
+  amount: number;
+  name?: string;
+  unit?: string;
+};
+
 type RecipeDialogProps = {
   recipeId?: string;
   trigger?: React.ReactNode;
@@ -81,6 +88,11 @@ export function RecipeDialog({ recipeId, trigger, onSave }: RecipeDialogProps) {
   const [selectedAmount, setSelectedAmount] = useState<string>("0");
   
   const [servings, setServings] = useState("1");
+  
+  // New state for ingredients per serving
+  const [ingredientsPerServing, setIngredientsPerServing] = useState<IngredientPerServing[]>([]);
+  const [selectedServingIngredientId, setSelectedServingIngredientId] = useState<string>("");
+  const [selectedServingAmount, setSelectedServingAmount] = useState<string>("0");
   
   const [totalCost, setTotalCost] = useState(0);
   const [costPerUnit, setCostPerUnit] = useState(0);
@@ -215,10 +227,55 @@ export function RecipeDialog({ recipeId, trigger, onSave }: RecipeDialogProps) {
     setSelectedAmount("0");
   };
 
+  const handleAddIngredientPerServing = () => {
+    if (!selectedServingIngredientId || parseFloat(selectedServingAmount) <= 0) {
+      toast.error("Selecione um ingrediente e uma quantidade válida para a porção");
+      return;
+    }
+
+    const ingredient = ingredients?.find(ing => ing.id === selectedServingIngredientId);
+    if (!ingredient) {
+      toast.error("Ingrediente não encontrado");
+      return;
+    }
+
+    const existingIndex = ingredientsPerServing.findIndex(
+      item => item.ingredient_id === selectedServingIngredientId
+    );
+
+    if (existingIndex >= 0) {
+      const updatedIngredients = [...ingredientsPerServing];
+      updatedIngredients[existingIndex] = {
+        ...updatedIngredients[existingIndex],
+        amount: parseFloat(selectedServingAmount)
+      };
+      setIngredientsPerServing(updatedIngredients);
+    } else {
+      setIngredientsPerServing([
+        ...ingredientsPerServing,
+        {
+          ingredient_id: selectedServingIngredientId,
+          amount: parseFloat(selectedServingAmount),
+          name: ingredient.name,
+          unit: ingredient.unit
+        }
+      ]);
+    }
+
+    setSelectedServingIngredientId("");
+    setSelectedServingAmount("0");
+  };
+
   const handleRemoveIngredient = (index: number) => {
     const updatedIngredients = [...recipeIngredients];
     updatedIngredients.splice(index, 1);
     setRecipeIngredients(updatedIngredients);
+  };
+
+  const handleRemoveIngredientPerServing = (index: number) => {
+    const updatedIngredients = [...ingredientsPerServing];
+    updatedIngredients.splice(index, 1);
+    setIngredientsPerServing(updatedIngredients);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -311,6 +368,9 @@ export function RecipeDialog({ recipeId, trigger, onSave }: RecipeDialogProps) {
     setServings("1");
     setTotalCost(0);
     setCostPerUnit(0);
+    setIngredientsPerServing([]);
+    setSelectedServingIngredientId("");
+    setSelectedServingAmount("0");
   };
 
   return (
@@ -477,6 +537,97 @@ export function RecipeDialog({ recipeId, trigger, onSave }: RecipeDialogProps) {
                 value={servings}
                 onChange={(e) => setServings(e.target.value)}
               />
+            </div>
+
+            {/* Novo campo para adicionar ingredientes por porção */}
+            <div className="mt-4 space-y-2">
+              <Label>Ingredientes por porção/unidade</Label>
+              
+              <div className="flex flex-col sm:flex-row gap-4">
+                <div className="flex-1">
+                  <Label htmlFor="servingIngredient">Ingrediente</Label>
+                  <Select 
+                    value={selectedServingIngredientId} 
+                    onValueChange={setSelectedServingIngredientId}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione um ingrediente" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {ingredients?.map((ingredient) => (
+                        <SelectItem key={ingredient.id} value={ingredient.id}>
+                          {ingredient.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                
+                <div className="w-full sm:w-36">
+                  <Label htmlFor="servingAmount">Quantidade por porção</Label>
+                  <Input
+                    id="servingAmount"
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={selectedServingAmount}
+                    onChange={(e) => setSelectedServingAmount(e.target.value)}
+                  />
+                </div>
+                
+                <div className="self-end">
+                  <Button 
+                    type="button" 
+                    onClick={handleAddIngredientPerServing}
+                    className="gap-2"
+                  >
+                    <Plus size={16} />
+                    Adicionar
+                  </Button>
+                </div>
+              </div>
+              
+              {ingredientsPerServing.length > 0 ? (
+                <div className="border rounded-md overflow-hidden mt-4">
+                  <table className="w-full">
+                    <thead className="bg-muted">
+                      <tr>
+                        <th className="text-left p-2">Ingrediente</th>
+                        <th className="text-center p-2">Quantidade por porção</th>
+                        <th className="text-right p-2">Ações</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {ingredientsPerServing.map((item, index) => {
+                        const ingredient = ingredients?.find(ing => ing.id === item.ingredient_id);
+                        const name = item.name || ingredient?.name || "Ingrediente";
+                        const unit = item.unit || ingredient?.unit || "";
+                        
+                        return (
+                          <tr key={index} className="border-t">
+                            <td className="p-2">{name}</td>
+                            <td className="p-2 text-center">{item.amount} {unit}</td>
+                            <td className="p-2 text-right">
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => handleRemoveIngredientPerServing(index)}
+                              >
+                                <Trash2 size={16} className="text-destructive" />
+                              </Button>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <div className="text-center p-4 text-muted-foreground bg-muted/20 rounded-md">
+                  Nenhum ingrediente por porção adicionado
+                </div>
+              )}
             </div>
           </div>
 
