@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { 
@@ -8,8 +9,7 @@ import {
   Package,
   Calculator,
   DollarSign,
-  Store,
-  AlertCircle
+  Store
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -42,12 +42,11 @@ import { IngredientDialog } from "./IngredientDialog";
 type Ingredient = {
   id: string;
   name: string;
-  type: 'solid' | 'liquid';
+  type: 'solid' | 'liquid' | 'pó';
   unit: string;
   brand: string | null;
   supplier: string | null;
   category: string | null;
-  stock: number;
   package_cost: number;
   package_amount: number;
   cost_per_unit: number;
@@ -64,6 +63,7 @@ const CATEGORIES = [
   "Frutas",
   "Gorduras",
   "Açúcares",
+  "Confeitos",
   "Outros"
 ];
 
@@ -88,7 +88,6 @@ const Ingredients = () => {
         ...ingredient,
         supplier: ingredient.supplier || null,
         category: ingredient.category || null,
-        stock: ingredient.stock || 0,
         type: ingredient.type || 'solid',
       })) as Ingredient[];
     },
@@ -112,8 +111,8 @@ const Ingredients = () => {
     },
     {
       icon: Store,
-      title: "Controle de Estoque",
-      description: "Acompanhe a quantidade disponível de cada ingrediente para nunca ficar sem estoque."
+      title: "Fornecedores",
+      description: "Registre informações de fornecedores para facilitar a reposição dos seus ingredientes."
     }
   ];
 
@@ -203,7 +202,6 @@ const Ingredients = () => {
               <TableHead>Qtd. Embalagem</TableHead>
               <TableHead>Custo Emb.</TableHead>
               <TableHead>Custo/Unidade</TableHead>
-              <TableHead>Estoque</TableHead>
               <TableHead className="text-right">Ações</TableHead>
             </TableRow>
           </TableHeader>
@@ -231,14 +229,6 @@ const Ingredients = () => {
                 <TableCell>
                   R$ {ingredient.cost_per_unit.toFixed(3)}/{ingredient.unit}
                 </TableCell>
-                <TableCell>
-                  <div className="flex items-center gap-2">
-                    <span>{ingredient.stock || 0} {ingredient.unit}</span>
-                    {(ingredient.stock || 0) <= 0 && (
-                      <AlertCircle size={16} className="text-destructive" />
-                    )}
-                  </div>
-                </TableCell>
                 <TableCell className="text-right">
                   <IngredientDialog
                     ingredient={ingredient}
@@ -251,7 +241,7 @@ const Ingredients = () => {
             {(!filteredIngredients || filteredIngredients.length === 0) && (
               <TableRow>
                 <TableCell 
-                  colSpan={8} 
+                  colSpan={7} 
                   className="h-32 text-center text-muted-foreground"
                 >
                   {searchTerm || selectedCategory !== "Todos"

@@ -1,6 +1,6 @@
 
 import { useEffect, useState } from "react";
-import { PlusCircle } from "lucide-react";
+import { PlusCircle, Trash2, Plus, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
@@ -13,8 +13,16 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { useQuery } from "@tanstack/react-query";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 type Recipe = {
   id: string;
@@ -29,22 +37,73 @@ type Recipe = {
   vendor_id: string;
 };
 
+type Ingredient = {
+  id: string;
+  name: string;
+  cost_per_unit: number;
+  unit: string;
+};
+
+type RecipeIngredient = {
+  ingredient_id: string;
+  amount: number;
+  name?: string;
+  unit?: string;
+  cost_per_unit?: number;
+};
+
 type RecipeDialogProps = {
   recipeId?: string;
   trigger?: React.ReactNode;
   onSave: () => void;
 };
 
+const CATEGORIES = [
+  "Doces",
+  "Salgados",
+  "Bolos",
+  "Tortas",
+  "Bebidas",
+  "Outros"
+];
+
 export function RecipeDialog({ recipeId, trigger, onSave }: RecipeDialogProps) {
   const [open, setOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const { user } = useAuth();
 
+  // Sessão 1: Informações básicas
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
-  const [servings, setServings] = useState("1");
+  
+  // Sessão 2: Ingredientes
+  const [recipeIngredients, setRecipeIngredients] = useState<RecipeIngredient[]>([]);
+  const [selectedIngredientId, setSelectedIngredientId] = useState<string>("");
+  const [selectedAmount, setSelectedAmount] = useState<string>("0");
+  
+  // Sessão 3: Categoria e porções
   const [category, setCategory] = useState("");
+  const [servings, setServings] = useState("1");
+  
+  // Sessão 4: Custos (calculados automaticamente)
+  const [totalCost, setTotalCost] = useState(0);
+  const [costPerUnit, setCostPerUnit] = useState(0);
 
+  // Carregar ingredientes disponíveis
+  const { data: ingredients } = useQuery({
+    queryKey: ["ingredients"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("ingredients")
+        .select("id, name, cost_per_unit, unit")
+        .order("name");
+
+      if (error) throw error;
+      return data as Ingredient[];
+    },
+  });
+
+  // Carregar dados da receita se for edição
   const { data: recipeData } = useQuery({
     queryKey: ["recipe", recipeId],
     queryFn: async () => {
@@ -62,58 +121,194 @@ export function RecipeDialog({ recipeId, trigger, onSave }: RecipeDialogProps) {
     enabled: !!recipeId,
   });
 
+  // Carregar ingredientes da receita se for edição
+  const { data: recipeIngredientsData } = useQuery({
+    queryKey: ["recipe-ingredients", recipeId],
+    queryFn: async () => {
+      if (!recipeId) return null;
+
+      const { data, error } = await supabase
+        .from("recipe_ingredients")
+        .select(`
+          id,
+          amount,
+          ingredient_id,
+          ingredients (id, name, unit, cost_per_unit)
+        `)
+        .eq("recipe_id", recipeId);
+
+      if (error) throw error;
+      
+      return data.map(item => ({
+        ingredient_id: item.ingredient_id,
+        amount: item.amount,
+        name: item.ingredients.name,
+        unit: item.ingredients.unit,
+        cost_per_unit: item.ingredients.cost_per_unit
+      })) as RecipeIngredient[];
+    },
+    enabled: !!recipeId,
+  });
+
+  // Preencher dados da receita se for edição
   useEffect(() => {
     if (recipeData) {
       setName(recipeData.name);
       setDescription(recipeData.description || "");
-      setServings(String(recipeData.servings));
       setCategory(recipeData.category || "");
+      setServings(String(recipeData.servings));
+      setTotalCost(recipeData.total_cost);
+      setCostPerUnit(recipeData.cost_per_unit);
     }
   }, [recipeData]);
+
+  // Preencher ingredientes da receita se for edição
+  useEffect(() => {
+    if (recipeIngredientsData) {
+      setRecipeIngredients(recipeIngredientsData);
+    }
+  }, [recipeIngredientsData]);
+
+  // Calcular custos sempre que os ingredientes ou porções mudam
+  useEffect(() => {
+    const calculatedTotalCost = recipeIngredients.reduce((sum, item) => {
+      const ingredient = ingredients?.find(ing => ing.id === item.ingredient_id);
+      if (ingredient) {
+        return sum + (ingredient.cost_per_unit * item.amount);
+      }
+      return sum + ((item.cost_per_unit || 0) * item.amount);
+    }, 0);
+    
+    setTotalCost(calculatedTotalCost);
+    
+    const numServings = parseInt(servings) || 1;
+    setCostPerUnit(calculatedTotalCost / numServings);
+  }, [recipeIngredients, servings, ingredients]);
+
+  const handleAddIngredient = () => {
+    if (!selectedIngredientId || parseFloat(selectedAmount) <= 0) {
+      toast.error("Selecione um ingrediente e uma quantidade válida");
+      return;
+    }
+
+    const ingredient = ingredients?.find(ing => ing.id === selectedIngredientId);
+    if (!ingredient) {
+      toast.error("Ingrediente não encontrado");
+      return;
+    }
+
+    // Verificar se o ingrediente já está na receita
+    const existingIndex = recipeIngredients.findIndex(
+      item => item.ingredient_id === selectedIngredientId
+    );
+
+    if (existingIndex >= 0) {
+      // Atualizar a quantidade se já existe
+      const updatedIngredients = [...recipeIngredients];
+      updatedIngredients[existingIndex] = {
+        ...updatedIngredients[existingIndex],
+        amount: updatedIngredients[existingIndex].amount + parseFloat(selectedAmount)
+      };
+      setRecipeIngredients(updatedIngredients);
+    } else {
+      // Adicionar novo ingrediente
+      setRecipeIngredients([
+        ...recipeIngredients,
+        {
+          ingredient_id: selectedIngredientId,
+          amount: parseFloat(selectedAmount),
+          name: ingredient.name,
+          unit: ingredient.unit,
+          cost_per_unit: ingredient.cost_per_unit
+        }
+      ]);
+    }
+
+    // Limpar seleção
+    setSelectedIngredientId("");
+    setSelectedAmount("0");
+  };
+
+  const handleRemoveIngredient = (index: number) => {
+    const updatedIngredients = [...recipeIngredients];
+    updatedIngredients.splice(index, 1);
+    setRecipeIngredients(updatedIngredients);
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!name || !servings) {
-      toast.error("Preencha todos os campos obrigatórios");
+    if (!name || recipeIngredients.length === 0) {
+      toast.error("Preencha o nome da receita e adicione pelo menos um ingrediente");
       return;
     }
 
     setIsLoading(true);
     try {
+      // 1. Salvar ou atualizar a receita
       const recipeData = {
         name,
         description: description || null,
-        servings: Number(servings),
         category: category || null,
+        servings: parseInt(servings) || 1,
         vendor_id: user?.id,
-        total_cost: 0, // Inicialmente zero, será atualizado pelo trigger quando ingredientes forem adicionados
+        total_cost: totalCost,
+        cost_per_unit: costPerUnit,
         packaging_cost: 0, // Inicialmente zero, será atualizado pelo trigger
-        cost_per_unit: 0, // Inicialmente zero, será atualizado pelo trigger
       };
 
+      let recipeId = recipeId;
+
       if (recipeId) {
+        // Atualizar receita existente
         const { error } = await supabase
           .from("recipes")
-          .update({
-            name: recipeData.name,
-            description: recipeData.description,
-            servings: recipeData.servings,
-            category: recipeData.category,
-          })
+          .update(recipeData)
           .eq("id", recipeId);
 
         if (error) throw error;
-        toast.success("Receita atualizada com sucesso");
       } else {
-        const { error } = await supabase
+        // Criar nova receita
+        const { data, error } = await supabase
           .from("recipes")
-          .insert(recipeData);
+          .insert(recipeData)
+          .select('id')
+          .single();
 
         if (error) throw error;
-        toast.success("Receita criada com sucesso");
+        recipeId = data.id;
       }
 
+      // 2. Se for edição, remover ingredientes antigos
+      if (recipeId) {
+        const { error } = await supabase
+          .from("recipe_ingredients")
+          .delete()
+          .eq("recipe_id", recipeId);
+
+        if (error) throw error;
+      }
+
+      // 3. Adicionar ingredientes da receita
+      if (recipeId && recipeIngredients.length > 0) {
+        const ingredientsToInsert = recipeIngredients.map(item => {
+          const ingredient = ingredients?.find(ing => ing.id === item.ingredient_id);
+          return {
+            recipe_id: recipeId,
+            ingredient_id: item.ingredient_id,
+            amount: item.amount,
+            ingredient_cost: (ingredient?.cost_per_unit || item.cost_per_unit || 0) * item.amount
+          };
+        });
+
+        const { error } = await supabase
+          .from("recipe_ingredients")
+          .insert(ingredientsToInsert);
+
+        if (error) throw error;
+      }
+
+      toast.success(recipeId ? "Receita atualizada com sucesso" : "Receita criada com sucesso");
       onSave();
       setOpen(false);
       resetForm();
@@ -128,8 +323,13 @@ export function RecipeDialog({ recipeId, trigger, onSave }: RecipeDialogProps) {
   const resetForm = () => {
     setName("");
     setDescription("");
-    setServings("1");
+    setRecipeIngredients([]);
+    setSelectedIngredientId("");
+    setSelectedAmount("0");
     setCategory("");
+    setServings("1");
+    setTotalCost(0);
+    setCostPerUnit(0);
   };
 
   return (
@@ -142,12 +342,14 @@ export function RecipeDialog({ recipeId, trigger, onSave }: RecipeDialogProps) {
           </Button>
         )}
       </DialogTrigger>
-      <DialogContent className="max-w-lg">
+      <DialogContent className="max-w-3xl">
         <DialogHeader>
           <DialogTitle>{recipeId ? "Editar Receita" : "Nova Receita"}</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-6">
-          <div className="space-y-4">
+          {/* Sessão 1: Informações Básicas */}
+          <div className="space-y-4 p-4 border rounded-lg">
+            <h3 className="font-semibold text-lg">Informações Básicas</h3>
             <div>
               <Label htmlFor="name">Nome da Receita*</Label>
               <Input
@@ -160,33 +362,157 @@ export function RecipeDialog({ recipeId, trigger, onSave }: RecipeDialogProps) {
 
             <div>
               <Label htmlFor="description">Descrição</Label>
-              <Input
+              <Textarea
                 id="description"
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 placeholder="Breve descrição da receita"
+                rows={3}
               />
             </div>
+          </div>
 
-            <div>
-              <Label htmlFor="servings">Porções*</Label>
-              <Input
-                id="servings"
-                type="number"
-                min="1"
-                value={servings}
-                onChange={(e) => setServings(e.target.value)}
-              />
+          {/* Sessão 2: Ingredientes */}
+          <div className="space-y-4 p-4 border rounded-lg">
+            <h3 className="font-semibold text-lg">Ingredientes</h3>
+            
+            <div className="flex flex-col sm:flex-row gap-4">
+              <div className="flex-1">
+                <Label htmlFor="ingredient">Ingrediente</Label>
+                <Select 
+                  value={selectedIngredientId} 
+                  onValueChange={setSelectedIngredientId}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione um ingrediente" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {ingredients?.map((ingredient) => (
+                      <SelectItem key={ingredient.id} value={ingredient.id}>
+                        {ingredient.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              
+              <div className="w-full sm:w-36">
+                <Label htmlFor="amount">Quantidade</Label>
+                <Input
+                  id="amount"
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={selectedAmount}
+                  onChange={(e) => setSelectedAmount(e.target.value)}
+                />
+              </div>
+              
+              <div className="self-end">
+                <Button 
+                  type="button" 
+                  onClick={handleAddIngredient}
+                  className="gap-2"
+                >
+                  <Plus size={16} />
+                  Adicionar
+                </Button>
+              </div>
             </div>
+            
+            {recipeIngredients.length > 0 ? (
+              <div className="border rounded-md overflow-hidden">
+                <table className="w-full">
+                  <thead className="bg-muted">
+                    <tr>
+                      <th className="text-left p-2">Ingrediente</th>
+                      <th className="text-center p-2">Quantidade</th>
+                      <th className="text-center p-2">Custo</th>
+                      <th className="text-right p-2">Ações</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {recipeIngredients.map((item, index) => {
+                      const ingredient = ingredients?.find(ing => ing.id === item.ingredient_id);
+                      const name = item.name || ingredient?.name || "Ingrediente";
+                      const unit = item.unit || ingredient?.unit || "";
+                      const costPerUnit = item.cost_per_unit || ingredient?.cost_per_unit || 0;
+                      const cost = costPerUnit * item.amount;
+                      
+                      return (
+                        <tr key={index} className="border-t">
+                          <td className="p-2">{name}</td>
+                          <td className="p-2 text-center">{item.amount} {unit}</td>
+                          <td className="p-2 text-center">R$ {cost.toFixed(2)}</td>
+                          <td className="p-2 text-right">
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => handleRemoveIngredient(index)}
+                            >
+                              <Trash2 size={16} className="text-destructive" />
+                            </Button>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <div className="text-center p-6 text-muted-foreground bg-muted/20 rounded-md">
+                Nenhum ingrediente adicionado
+              </div>
+            )}
+          </div>
 
-            <div>
-              <Label htmlFor="category">Categoria</Label>
-              <Input
-                id="category"
-                value={category}
-                onChange={(e) => setCategory(e.target.value)}
-                placeholder="Ex: Doces, Bolos, Salgados"
-              />
+          {/* Sessão 3: Categoria */}
+          <div className="space-y-4 p-4 border rounded-lg">
+            <h3 className="font-semibold text-lg">Detalhes da Receita</h3>
+            
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="category">Categoria</Label>
+                <Select value={category} onValueChange={setCategory}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione uma categoria" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {CATEGORIES.map((cat) => (
+                      <SelectItem key={cat} value={cat}>
+                        {cat}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div>
+                <Label htmlFor="servings">Porções*</Label>
+                <Input
+                  id="servings"
+                  type="number"
+                  min="1"
+                  value={servings}
+                  onChange={(e) => setServings(e.target.value)}
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Sessão 4: Custos */}
+          <div className="space-y-2 p-4 border rounded-lg bg-muted/20">
+            <h3 className="font-semibold text-lg">Custos</h3>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <p className="text-sm text-muted-foreground">Custo total dos ingredientes</p>
+                <p className="text-lg font-semibold">R$ {totalCost.toFixed(2)}</p>
+              </div>
+              <div>
+                <p className="text-sm text-muted-foreground">Custo por porção</p>
+                <p className="text-lg font-semibold">R$ {costPerUnit.toFixed(2)}</p>
+              </div>
             </div>
           </div>
 
@@ -200,7 +526,7 @@ export function RecipeDialog({ recipeId, trigger, onSave }: RecipeDialogProps) {
               Cancelar
             </Button>
             <Button type="submit" disabled={isLoading}>
-              {recipeId ? "Atualizar" : "Criar"}
+              {isLoading ? "Salvando..." : (recipeId ? "Atualizar" : "Criar")}
             </Button>
           </div>
         </form>

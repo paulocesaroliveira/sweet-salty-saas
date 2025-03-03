@@ -26,12 +26,11 @@ import {
 type Ingredient = {
   id: string;
   name: string;
-  type: 'solid' | 'liquid';
+  type: 'solid' | 'liquid' | 'pó';
   unit: string;
   brand: string | null;
   supplier: string | null;
   category: string | null;
-  stock: number;
   package_cost: number;
   package_amount: number;
   cost_per_unit: number;
@@ -49,18 +48,20 @@ const CATEGORIES = [
   "Frutas",
   "Gorduras",
   "Açúcares",
+  "Confeitos",
   "Outros"
 ];
 
+// Simplificado para apenas gramas e mililitros
 const VALID_UNITS = {
   solid: [
     { value: "g", label: "Gramas (g)" },
-    { value: "kg", label: "Quilogramas (kg)" },
-    { value: "un", label: "Unidades (un)" },
   ],
   liquid: [
     { value: "ml", label: "Mililitros (ml)" },
-    { value: "l", label: "Litros (l)" },
+  ],
+  pó: [
+    { value: "g", label: "Gramas (g)" },
   ],
 };
 
@@ -70,14 +71,13 @@ export function IngredientDialog({ onSave, ingredient }: IngredientDialogProps) 
   const { user } = useAuth();
 
   const [name, setName] = useState("");
-  const [type, setType] = useState<"solid" | "liquid">("solid");
+  const [type, setType] = useState<"solid" | "liquid" | "pó">("solid");
   const [unit, setUnit] = useState("");
   const [brand, setBrand] = useState("");
   const [supplier, setSupplier] = useState("");
   const [category, setCategory] = useState("");
   const [packageCost, setPackageCost] = useState("");
   const [packageAmount, setPackageAmount] = useState("");
-  const [stock, setStock] = useState("");
 
   useEffect(() => {
     if (ingredient) {
@@ -89,7 +89,6 @@ export function IngredientDialog({ onSave, ingredient }: IngredientDialogProps) 
       setCategory(ingredient.category || "");
       setPackageCost(ingredient.package_cost.toString());
       setPackageAmount(ingredient.package_amount.toString());
-      setStock(ingredient.stock?.toString() || "0");
     }
   }, [ingredient]);
 
@@ -111,7 +110,6 @@ export function IngredientDialog({ onSave, ingredient }: IngredientDialogProps) 
         brand: brand || null,
         supplier: supplier || null,
         category: category || null,
-        stock: Number(stock) || 0,
         package_cost: Number(packageCost),
         package_amount: Number(packageAmount),
         cost_per_unit: costPerUnit,
@@ -161,7 +159,6 @@ export function IngredientDialog({ onSave, ingredient }: IngredientDialogProps) 
     setCategory("");
     setPackageCost("");
     setPackageAmount("");
-    setStock("0");
   };
 
   const availableUnits = VALID_UNITS[type];
@@ -223,7 +220,7 @@ export function IngredientDialog({ onSave, ingredient }: IngredientDialogProps) 
               <Label htmlFor="type">Tipo *</Label>
               <Select 
                 value={type} 
-                onValueChange={(value: "solid" | "liquid") => {
+                onValueChange={(value: "solid" | "liquid" | "pó") => {
                   setType(value);
                   setUnit(""); 
                 }}
@@ -234,6 +231,7 @@ export function IngredientDialog({ onSave, ingredient }: IngredientDialogProps) 
                 <SelectContent>
                   <SelectItem value="solid">Sólido</SelectItem>
                   <SelectItem value="liquid">Líquido</SelectItem>
+                  <SelectItem value="pó">Pó</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -277,7 +275,7 @@ export function IngredientDialog({ onSave, ingredient }: IngredientDialogProps) 
             </div>
           </div>
 
-          <div className="grid sm:grid-cols-3 gap-4">
+          <div className="grid sm:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="packageAmount">Qtd. Embalagem *</Label>
               <Input
@@ -301,19 +299,6 @@ export function IngredientDialog({ onSave, ingredient }: IngredientDialogProps) 
                 value={packageCost}
                 onChange={(e) => setPackageCost(e.target.value)}
                 placeholder="Ex: 15.90"
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="stock">Estoque Atual</Label>
-              <Input
-                id="stock"
-                type="number"
-                step="0.01"
-                min="0"
-                value={stock}
-                onChange={(e) => setStock(e.target.value)}
-                placeholder={`Ex: 500 ${unit}`}
               />
             </div>
           </div>
