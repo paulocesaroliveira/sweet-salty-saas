@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from "react";
 import { PlusCircle, Trash2, Plus, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
@@ -72,24 +71,19 @@ export function RecipeDialog({ recipeId, trigger, onSave }: RecipeDialogProps) {
   const [isLoading, setIsLoading] = useState(false);
   const { user } = useAuth();
 
-  // Sessão 1: Informações básicas
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   
-  // Sessão 2: Ingredientes
   const [recipeIngredients, setRecipeIngredients] = useState<RecipeIngredient[]>([]);
   const [selectedIngredientId, setSelectedIngredientId] = useState<string>("");
   const [selectedAmount, setSelectedAmount] = useState<string>("0");
   
-  // Sessão 3: Categoria e porções
   const [category, setCategory] = useState("");
   const [servings, setServings] = useState("1");
   
-  // Sessão 4: Custos (calculados automaticamente)
   const [totalCost, setTotalCost] = useState(0);
   const [costPerUnit, setCostPerUnit] = useState(0);
 
-  // Carregar ingredientes disponíveis
   const { data: ingredients } = useQuery({
     queryKey: ["ingredients"],
     queryFn: async () => {
@@ -103,7 +97,6 @@ export function RecipeDialog({ recipeId, trigger, onSave }: RecipeDialogProps) {
     },
   });
 
-  // Carregar dados da receita se for edição
   const { data: recipeData } = useQuery({
     queryKey: ["recipe", recipeId],
     queryFn: async () => {
@@ -121,7 +114,6 @@ export function RecipeDialog({ recipeId, trigger, onSave }: RecipeDialogProps) {
     enabled: !!recipeId,
   });
 
-  // Carregar ingredientes da receita se for edição
   const { data: recipeIngredientsData } = useQuery({
     queryKey: ["recipe-ingredients", recipeId],
     queryFn: async () => {
@@ -150,7 +142,6 @@ export function RecipeDialog({ recipeId, trigger, onSave }: RecipeDialogProps) {
     enabled: !!recipeId,
   });
 
-  // Preencher dados da receita se for edição
   useEffect(() => {
     if (recipeData) {
       setName(recipeData.name);
@@ -162,14 +153,12 @@ export function RecipeDialog({ recipeId, trigger, onSave }: RecipeDialogProps) {
     }
   }, [recipeData]);
 
-  // Preencher ingredientes da receita se for edição
   useEffect(() => {
     if (recipeIngredientsData) {
       setRecipeIngredients(recipeIngredientsData);
     }
   }, [recipeIngredientsData]);
 
-  // Calcular custos sempre que os ingredientes ou porções mudam
   useEffect(() => {
     const calculatedTotalCost = recipeIngredients.reduce((sum, item) => {
       const ingredient = ingredients?.find(ing => ing.id === item.ingredient_id);
@@ -197,13 +186,11 @@ export function RecipeDialog({ recipeId, trigger, onSave }: RecipeDialogProps) {
       return;
     }
 
-    // Verificar se o ingrediente já está na receita
     const existingIndex = recipeIngredients.findIndex(
       item => item.ingredient_id === selectedIngredientId
     );
 
     if (existingIndex >= 0) {
-      // Atualizar a quantidade se já existe
       const updatedIngredients = [...recipeIngredients];
       updatedIngredients[existingIndex] = {
         ...updatedIngredients[existingIndex],
@@ -211,7 +198,6 @@ export function RecipeDialog({ recipeId, trigger, onSave }: RecipeDialogProps) {
       };
       setRecipeIngredients(updatedIngredients);
     } else {
-      // Adicionar novo ingrediente
       setRecipeIngredients([
         ...recipeIngredients,
         {
@@ -224,7 +210,6 @@ export function RecipeDialog({ recipeId, trigger, onSave }: RecipeDialogProps) {
       ]);
     }
 
-    // Limpar seleção
     setSelectedIngredientId("");
     setSelectedAmount("0");
   };
@@ -245,7 +230,6 @@ export function RecipeDialog({ recipeId, trigger, onSave }: RecipeDialogProps) {
 
     setIsLoading(true);
     try {
-      // 1. Salvar ou atualizar a receita
       const recipeData = {
         name,
         description: description || null,
@@ -254,13 +238,12 @@ export function RecipeDialog({ recipeId, trigger, onSave }: RecipeDialogProps) {
         vendor_id: user?.id,
         total_cost: totalCost,
         cost_per_unit: costPerUnit,
-        packaging_cost: 0, // Inicialmente zero, será atualizado pelo trigger
+        packaging_cost: 0,
       };
 
-      let recipeId = recipeId;
+      let savedRecipeId = recipeId;
 
       if (recipeId) {
-        // Atualizar receita existente
         const { error } = await supabase
           .from("recipes")
           .update(recipeData)
@@ -268,7 +251,6 @@ export function RecipeDialog({ recipeId, trigger, onSave }: RecipeDialogProps) {
 
         if (error) throw error;
       } else {
-        // Criar nova receita
         const { data, error } = await supabase
           .from("recipes")
           .insert(recipeData)
@@ -276,25 +258,23 @@ export function RecipeDialog({ recipeId, trigger, onSave }: RecipeDialogProps) {
           .single();
 
         if (error) throw error;
-        recipeId = data.id;
+        savedRecipeId = data.id;
       }
 
-      // 2. Se for edição, remover ingredientes antigos
-      if (recipeId) {
+      if (savedRecipeId) {
         const { error } = await supabase
           .from("recipe_ingredients")
           .delete()
-          .eq("recipe_id", recipeId);
+          .eq("recipe_id", savedRecipeId);
 
         if (error) throw error;
       }
 
-      // 3. Adicionar ingredientes da receita
-      if (recipeId && recipeIngredients.length > 0) {
+      if (savedRecipeId && recipeIngredients.length > 0) {
         const ingredientsToInsert = recipeIngredients.map(item => {
           const ingredient = ingredients?.find(ing => ing.id === item.ingredient_id);
           return {
-            recipe_id: recipeId,
+            recipe_id: savedRecipeId,
             ingredient_id: item.ingredient_id,
             amount: item.amount,
             ingredient_cost: (ingredient?.cost_per_unit || item.cost_per_unit || 0) * item.amount
@@ -347,7 +327,6 @@ export function RecipeDialog({ recipeId, trigger, onSave }: RecipeDialogProps) {
           <DialogTitle>{recipeId ? "Editar Receita" : "Nova Receita"}</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-6">
-          {/* Sessão 1: Informações Básicas */}
           <div className="space-y-4 p-4 border rounded-lg">
             <h3 className="font-semibold text-lg">Informações Básicas</h3>
             <div>
@@ -372,7 +351,6 @@ export function RecipeDialog({ recipeId, trigger, onSave }: RecipeDialogProps) {
             </div>
           </div>
 
-          {/* Sessão 2: Ingredientes */}
           <div className="space-y-4 p-4 border rounded-lg">
             <h3 className="font-semibold text-lg">Ingredientes</h3>
             
@@ -467,7 +445,6 @@ export function RecipeDialog({ recipeId, trigger, onSave }: RecipeDialogProps) {
             )}
           </div>
 
-          {/* Sessão 3: Categoria */}
           <div className="space-y-4 p-4 border rounded-lg">
             <h3 className="font-semibold text-lg">Detalhes da Receita</h3>
             
@@ -501,7 +478,6 @@ export function RecipeDialog({ recipeId, trigger, onSave }: RecipeDialogProps) {
             </div>
           </div>
 
-          {/* Sessão 4: Custos */}
           <div className="space-y-2 p-4 border rounded-lg bg-muted/20">
             <h3 className="font-semibold text-lg">Custos</h3>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
