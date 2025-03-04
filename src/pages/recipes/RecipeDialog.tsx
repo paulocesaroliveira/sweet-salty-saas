@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from "react";
 import { PlusCircle, Trash2, Plus, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
@@ -89,7 +88,6 @@ export function RecipeDialog({ recipeId, trigger, onSave }: RecipeDialogProps) {
   
   const [servings, setServings] = useState("1");
   
-  // New state for ingredients per serving
   const [ingredientsPerServing, setIngredientsPerServing] = useState<IngredientPerServing[]>([]);
   const [selectedServingIngredientId, setSelectedServingIngredientId] = useState<string>("");
   const [selectedServingAmount, setSelectedServingAmount] = useState<string>("0");
@@ -180,12 +178,21 @@ export function RecipeDialog({ recipeId, trigger, onSave }: RecipeDialogProps) {
       }
       return sum + ((item.cost_per_unit || 0) * item.amount);
     }, 0);
+
+    const perServingTotalCost = ingredientsPerServing.reduce((sum, item) => {
+      const ingredient = ingredients?.find(ing => ing.id === item.ingredient_id);
+      if (ingredient) {
+        return sum + (ingredient.cost_per_unit * item.amount * parseInt(servings));
+      }
+      return sum;
+    }, 0);
     
-    setTotalCost(calculatedTotalCost);
+    const totalCostWithServings = calculatedTotalCost + perServingTotalCost;
+    setTotalCost(totalCostWithServings);
     
     const numServings = parseInt(servings) || 1;
-    setCostPerUnit(calculatedTotalCost / numServings);
-  }, [recipeIngredients, servings, ingredients]);
+    setCostPerUnit(totalCostWithServings / numServings);
+  }, [recipeIngredients, ingredientsPerServing, servings, ingredients]);
 
   const handleAddIngredient = () => {
     if (!selectedIngredientId || parseFloat(selectedAmount) <= 0) {
@@ -388,7 +395,6 @@ export function RecipeDialog({ recipeId, trigger, onSave }: RecipeDialogProps) {
           <DialogTitle>{recipeId ? "Editar Receita" : "Nova Receita"}</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-6">
-          {/* Seção 1: Informações Básicas */}
           <div className="space-y-4 p-4 border rounded-lg">
             <h3 className="font-semibold text-lg">Informações Básicas</h3>
             <div>
@@ -429,7 +435,6 @@ export function RecipeDialog({ recipeId, trigger, onSave }: RecipeDialogProps) {
             </div>
           </div>
 
-          {/* Seção 2: Ingredientes */}
           <div className="space-y-4 p-4 border rounded-lg">
             <h3 className="font-semibold text-lg">Ingredientes</h3>
             
@@ -524,7 +529,6 @@ export function RecipeDialog({ recipeId, trigger, onSave }: RecipeDialogProps) {
             )}
           </div>
 
-          {/* Seção 3: Porção/Unidade */}
           <div className="space-y-4 p-4 border rounded-lg">
             <h3 className="font-semibold text-lg">Porção/Unidade</h3>
             
@@ -539,7 +543,6 @@ export function RecipeDialog({ recipeId, trigger, onSave }: RecipeDialogProps) {
               />
             </div>
 
-            {/* Novo campo para adicionar ingredientes por porção */}
             <div className="mt-4 space-y-2">
               <Label>Ingredientes por porção/unidade</Label>
               
@@ -631,7 +634,6 @@ export function RecipeDialog({ recipeId, trigger, onSave }: RecipeDialogProps) {
             </div>
           </div>
 
-          {/* Seção 4: Custos */}
           <div className="space-y-2 p-4 border rounded-lg bg-muted/20">
             <h3 className="font-semibold text-lg">Custos</h3>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
