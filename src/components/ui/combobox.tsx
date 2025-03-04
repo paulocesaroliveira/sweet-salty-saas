@@ -51,6 +51,13 @@ export function Combobox({
     options.find((option) => option.value === value),
   [options, value])
 
+  const filteredOptions = React.useMemo(() => {
+    if (!inputValue) return options
+    return options.filter((option) => 
+      option.label.toLowerCase().includes(inputValue.toLowerCase())
+    )
+  }, [options, inputValue])
+
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
@@ -77,10 +84,7 @@ export function Combobox({
         </button>
       </PopoverTrigger>
       <PopoverContent className="w-full p-0" align="start">
-        <Command filter={(value, search) => {
-          if (value.toLowerCase().includes(search.toLowerCase())) return 1
-          return 0
-        }}>
+        <Command>
           <CommandInput 
             placeholder={`Buscar ${placeholder.toLowerCase()}...`} 
             value={inputValue}
@@ -89,7 +93,7 @@ export function Combobox({
           />
           <CommandEmpty>{emptyMessage}</CommandEmpty>
           <CommandGroup className="max-h-64 overflow-auto">
-            {options.map((option) => (
+            {filteredOptions.map((option) => (
               <CommandItem
                 key={option.value}
                 value={option.value}

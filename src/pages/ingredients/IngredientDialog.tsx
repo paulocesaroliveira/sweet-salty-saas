@@ -1,5 +1,6 @@
+
 import { useEffect, useState } from "react";
-import { PlusCircle, Pencil, Trash2 } from "lucide-react";
+import { PlusCircle, Pencil } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
@@ -22,17 +23,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/components/ui/alert-dialog";
 
 type Ingredient = {
   id: string;
@@ -71,7 +61,7 @@ const VALID_UNITS = {
   liquid: [
     { value: "ml", label: "Mililitros (ml)" },
   ],
-  pó: [
+  "pó": [
     { value: "g", label: "Gramas (g)" },
   ],
 };
@@ -79,7 +69,6 @@ const VALID_UNITS = {
 export function IngredientDialog({ onSave, ingredient }: IngredientDialogProps) {
   const [open, setOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const { user } = useAuth();
 
   const [name, setName] = useState("");
@@ -181,43 +170,6 @@ export function IngredientDialog({ onSave, ingredient }: IngredientDialogProps) 
           ? "Erro ao atualizar ingrediente"
           : "Erro ao adicionar ingrediente"
       );
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleDelete = async () => {
-    if (!ingredient) return;
-    
-    setIsLoading(true);
-    try {
-      const { data: recipeIngredients, error: checkError } = await supabase
-        .from("recipe_ingredients")
-        .select("id")
-        .eq("ingredient_id", ingredient.id)
-        .limit(1);
-      
-      if (checkError) throw checkError;
-      
-      if (recipeIngredients && recipeIngredients.length > 0) {
-        toast.error("Não é possível excluir este ingrediente pois ele está sendo usado em receitas");
-        return;
-      }
-      
-      const { error } = await supabase
-        .from("ingredients")
-        .delete()
-        .eq("id", ingredient.id);
-      
-      if (error) throw error;
-      
-      toast.success("Ingrediente excluído com sucesso");
-      onSave();
-      setOpen(false);
-      setDeleteDialogOpen(false);
-    } catch (error) {
-      console.error("Erro ao excluir ingrediente:", error);
-      toast.error("Erro ao excluir ingrediente");
     } finally {
       setIsLoading(false);
     }
@@ -380,33 +332,6 @@ export function IngredientDialog({ onSave, ingredient }: IngredientDialogProps) 
           </form>
         </div>
         <div className="flex justify-end gap-2 pt-4 border-t mt-4">
-          {ingredient && (
-            <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
-              <AlertDialogTrigger asChild>
-                <Button type="button" variant="destructive" disabled={isLoading}>
-                  <Trash2 size={16} className="mr-2" />
-                  Excluir
-                </Button>
-              </AlertDialogTrigger>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>Excluir ingrediente</AlertDialogTitle>
-                  <AlertDialogDescription>
-                    Tem certeza que deseja excluir o ingrediente "{ingredient.name}"? Esta ação não pode ser desfeita.
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                  <AlertDialogAction 
-                    onClick={handleDelete}
-                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                  >
-                    Excluir
-                  </AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
-          )}
           <Button
             type="button"
             variant="outline"

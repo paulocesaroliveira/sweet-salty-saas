@@ -9,7 +9,9 @@ import {
   Package,
   Calculator,
   DollarSign,
-  Store
+  Store,
+  Pencil,
+  Trash2
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -36,6 +38,17 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
 import { IngredientDialog } from "./IngredientDialog";
 
@@ -70,6 +83,9 @@ const CATEGORIES = [
 const Ingredients = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("Todos");
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [ingredientToDelete, setIngredientToDelete] = useState<Ingredient | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
 
   const { data: ingredients, refetch } = useQuery({
     queryKey: ["ingredients"],
@@ -92,6 +108,43 @@ const Ingredients = () => {
       })) as Ingredient[];
     },
   });
+
+  const handleDelete = async () => {
+    if (!ingredientToDelete) return;
+    
+    setIsLoading(true);
+    try {
+      const { data: recipeIngredients, error: checkError } = await supabase
+        .from("recipe_ingredients")
+        .select("id")
+        .eq("ingredient_id", ingredientToDelete.id)
+        .limit(1);
+      
+      if (checkError) throw checkError;
+      
+      if (recipeIngredients && recipeIngredients.length > 0) {
+        toast.error("Não é possível excluir este ingrediente pois ele está sendo usado em receitas");
+        setDeleteDialogOpen(false);
+        return;
+      }
+      
+      const { error } = await supabase
+        .from("ingredients")
+        .delete()
+        .eq("id", ingredientToDelete.id);
+      
+      if (error) throw error;
+      
+      toast.success("Ingrediente excluído com sucesso");
+      refetch();
+      setDeleteDialogOpen(false);
+    } catch (error) {
+      console.error("Erro ao excluir ingrediente:", error);
+      toast.error("Erro ao excluir ingrediente");
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const helpCards = [
     {
@@ -230,10 +283,20 @@ const Ingredients = () => {
                   R$ {ingredient.cost_per_unit.toFixed(3)}/{ingredient.unit}
                 </TableCell>
                 <TableCell className="text-right">
-                  <IngredientDialog
-                    ingredient={ingredient}
-                    onSave={refetch}
-                  />
+                  <div className="flex justify-end gap-1">
+                    <IngredientDialog
+                      ingredient={ingredient}
+                      onSave={refetch}
+                    />
+                    <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive"
+                      onClick={() => {
+                        setIngredientToDelete(ingredient);
+                        setDeleteDialogOpen(true);
+                      }}
+                    >
+                      <Trash2 size={16} />
+                    </Button>
+                  </div>
                 </TableCell>
               </TableRow>
             ))}
@@ -253,6 +316,27 @@ const Ingredients = () => {
           </TableBody>
         </Table>
       </Card>
+
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir ingrediente</AlertDialogTitle>
+            <AlertDialogDescription>
+              Tem certeza que deseja excluir o ingrediente "{ingredientToDelete?.name}"? Esta ação não pode ser desfeita.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={handleDelete}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              disabled={isLoading}
+            >
+              {isLoading ? "Excluindo..." : "Excluir"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
