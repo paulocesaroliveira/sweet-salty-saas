@@ -45,21 +45,30 @@ export function Combobox({
   disabled = false,
 }: ComboboxProps) {
   const [open, setOpen] = React.useState(false)
-  const [inputValue, setInputValue] = React.useState("")
+  const [search, setSearch] = React.useState("")
   
   const selectedOption = React.useMemo(() => 
     options.find((option) => option.value === value),
   [options, value])
 
   const filteredOptions = React.useMemo(() => {
-    if (!inputValue) return options
+    if (!search) return options
     return options.filter((option) => 
-      option.label.toLowerCase().includes(inputValue.toLowerCase())
+      option.label.toLowerCase().includes(search.toLowerCase())
     )
-  }, [options, inputValue])
+  }, [options, search])
+
+  // Abrir o popover automaticamente quando o usuário clica no input
+  const handleOpenChange = (isOpen: boolean) => {
+    setOpen(isOpen)
+    if (!isOpen) {
+      // Limpar a busca ao fechar
+      setSearch("")
+    }
+  }
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
+    <Popover open={open} onOpenChange={handleOpenChange}>
       <PopoverTrigger asChild>
         <button
           role="combobox"
@@ -87,9 +96,10 @@ export function Combobox({
         <Command>
           <CommandInput 
             placeholder={`Buscar ${placeholder.toLowerCase()}...`} 
-            value={inputValue}
-            onValueChange={setInputValue}
+            value={search}
+            onValueChange={setSearch}
             className="h-9" 
+            autoFocus
           />
           <CommandEmpty>{emptyMessage}</CommandEmpty>
           <CommandGroup className="max-h-64 overflow-auto">
@@ -100,7 +110,7 @@ export function Combobox({
                 onSelect={() => {
                   onChange(option.value === value ? "" : option.value)
                   setOpen(false)
-                  setInputValue("")
+                  setSearch("")
                 }}
               >
                 <div className="flex items-center justify-between w-full">
