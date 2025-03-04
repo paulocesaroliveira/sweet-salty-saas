@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { 
@@ -9,7 +10,8 @@ import {
   PackageOpen,
   Copy,
   Tag,
-  Pencil
+  Pencil,
+  Trash2
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -38,6 +40,17 @@ import {
 import { toast } from "sonner";
 import { RecipeDialog } from "./RecipeDialog";
 import { RecipeDetails } from "./RecipeDetails";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 const CATEGORIES = [
   "Todos",
@@ -91,6 +104,8 @@ const Recipes = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("Todos");
   const [selectedRecipeId, setSelectedRecipeId] = useState<string | null>(null);
+  const [recipeToDelete, setRecipeToDelete] = useState<Recipe | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const { data: recipes, refetch } = useQuery({
     queryKey: ["recipes"],
@@ -177,6 +192,38 @@ const Recipes = () => {
     } catch (error) {
       toast.error("Erro ao duplicar receita");
       console.error(error);
+    }
+  };
+
+  const handleDeleteRecipe = async () => {
+    if (!recipeToDelete) return;
+    
+    setIsDeleting(true);
+    try {
+      // Delete recipe ingredients first
+      const { error: deleteIngredientsError } = await supabase
+        .from("recipe_ingredients")
+        .delete()
+        .eq("recipe_id", recipeToDelete.id);
+      
+      if (deleteIngredientsError) throw deleteIngredientsError;
+      
+      // Then delete the recipe
+      const { error } = await supabase
+        .from("recipes")
+        .delete()
+        .eq("id", recipeToDelete.id);
+      
+      if (error) throw error;
+      
+      toast.success("Receita excluída com sucesso");
+      refetch();
+      setRecipeToDelete(null);
+    } catch (error) {
+      console.error("Erro ao excluir receita:", error);
+      toast.error("Erro ao excluir receita");
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -320,6 +367,14 @@ const Recipes = () => {
                     >
                       <Copy size={16} />
                     </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => setRecipeToDelete(recipe)}
+                      title="Excluir receita"
+                    >
+                      <Trash2 size={16} className="text-destructive" />
+                    </Button>
                   </div>
                 </TableCell>
               </TableRow>
@@ -345,6 +400,27 @@ const Recipes = () => {
         recipeId={selectedRecipeId}
         onClose={() => setSelectedRecipeId(null)}
       />
+
+      <AlertDialog open={!!recipeToDelete} onOpenChange={(open) => !open && setRecipeToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir receita</AlertDialogTitle>
+            <AlertDialogDescription>
+              Tem certeza que deseja excluir a receita "{recipeToDelete?.name}"? Esta ação não pode ser desfeita.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeleting}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={handleDeleteRecipe}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              disabled={isDeleting}
+            >
+              {isDeleting ? "Excluindo..." : "Excluir"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };

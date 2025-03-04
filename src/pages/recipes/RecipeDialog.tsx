@@ -1,5 +1,6 @@
+
 import { useEffect, useState } from "react";
-import { PlusCircle, Trash2, Plus, X } from "lucide-react";
+import { PlusCircle, Trash2, Plus, X, Pencil } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
@@ -22,6 +23,18 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import { Combobox, ComboboxOption } from "@/components/ui/combobox";
 
 type Recipe = {
   id: string;
@@ -41,6 +54,7 @@ type Ingredient = {
   name: string;
   cost_per_unit: number;
   unit: string;
+  package_amount: number;
 };
 
 type RecipeIngredient = {
@@ -76,6 +90,7 @@ const CATEGORIES = [
 export function RecipeDialog({ recipeId, trigger, onSave }: RecipeDialogProps) {
   const [open, setOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const { user } = useAuth();
 
   const [name, setName] = useState("");
@@ -100,7 +115,7 @@ export function RecipeDialog({ recipeId, trigger, onSave }: RecipeDialogProps) {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("ingredients")
-        .select("id, name, cost_per_unit, unit")
+        .select("id, name, cost_per_unit, unit, package_amount")
         .order("name");
 
       if (error) throw error;
@@ -365,6 +380,39 @@ export function RecipeDialog({ recipeId, trigger, onSave }: RecipeDialogProps) {
     }
   };
 
+  const handleDelete = async () => {
+    if (!recipeId) return;
+    
+    setIsLoading(true);
+    try {
+      // Delete recipe ingredients first
+      const { error: deleteIngredientsError } = await supabase
+        .from("recipe_ingredients")
+        .delete()
+        .eq("recipe_id", recipeId);
+      
+      if (deleteIngredientsError) throw deleteIngredientsError;
+      
+      // Then delete the recipe
+      const { error } = await supabase
+        .from("recipes")
+        .delete()
+        .eq("id", recipeId);
+      
+      if (error) throw error;
+      
+      toast.success("Receita excluída com sucesso");
+      onSave();
+      setOpen(false);
+      setDeleteDialogOpen(false);
+    } catch (error) {
+      console.error("Erro ao excluir receita:", error);
+      toast.error("Erro ao excluir receita");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const resetForm = () => {
     setName("");
     setDescription("");
@@ -380,6 +428,13 @@ export function RecipeDialog({ recipeId, trigger, onSave }: RecipeDialogProps) {
     setSelectedServingAmount("0");
   };
 
+  const ingredientOptions: ComboboxOption[] = ingredients?.map(ingredient => ({
+    value: ingredient.id,
+    label: ingredient.name,
+    unit: ingredient.unit,
+    package_amount: ingredient.package_amount
+  })) || [];
+
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
@@ -390,7 +445,7 @@ export function RecipeDialog({ recipeId, trigger, onSave }: RecipeDialogProps) {
           </Button>
         )}
       </DialogTrigger>
-      <DialogContent className="max-w-3xl">
+      <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>{recipeId ? "Editar Receita" : "Nova Receita"}</DialogTitle>
         </DialogHeader>
@@ -441,21 +496,13 @@ export function RecipeDialog({ recipeId, trigger, onSave }: RecipeDialogProps) {
             <div className="flex flex-col sm:flex-row gap-4">
               <div className="flex-1">
                 <Label htmlFor="ingredient">Ingrediente</Label>
-                <Select 
-                  value={selectedIngredientId} 
-                  onValueChange={setSelectedIngredientId}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selecione um ingrediente" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {ingredients?.map((ingredient) => (
-                      <SelectItem key={ingredient.id} value={ingredient.id}>
-                        {ingredient.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <Combobox
+                  options={ingredientOptions}
+                  value={selectedIngredientId}
+                  onChange={setSelectedIngredientId}
+                  placeholder="Selecione um ingrediente"
+                  emptyMessage="Nenhum ingrediente encontrado"
+                />
               </div>
               
               <div className="w-full sm:w-36">
@@ -549,21 +596,13 @@ export function RecipeDialog({ recipeId, trigger, onSave }: RecipeDialogProps) {
               <div className="flex flex-col sm:flex-row gap-4">
                 <div className="flex-1">
                   <Label htmlFor="servingIngredient">Ingrediente</Label>
-                  <Select 
-                    value={selectedServingIngredientId} 
-                    onValueChange={setSelectedServingIngredientId}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecione um ingrediente" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {ingredients?.map((ingredient) => (
-                        <SelectItem key={ingredient.id} value={ingredient.id}>
-                          {ingredient.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <Combobox
+                    options={ingredientOptions}
+                    value={selectedServingIngredientId}
+                    onChange={setSelectedServingIngredientId}
+                    placeholder="Selecione um ingrediente"
+                    emptyMessage="Nenhum ingrediente encontrado"
+                  />
                 </div>
                 
                 <div className="w-full sm:w-36">
@@ -649,6 +688,33 @@ export function RecipeDialog({ recipeId, trigger, onSave }: RecipeDialogProps) {
           </div>
 
           <div className="flex justify-end gap-2">
+            {recipeId && (
+              <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+                <AlertDialogTrigger asChild>
+                  <Button type="button" variant="destructive" disabled={isLoading}>
+                    <Trash2 size={16} className="mr-2" />
+                    Excluir
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Excluir receita</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      Tem certeza que deseja excluir a receita "{name}"? Esta ação não pode ser desfeita.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                    <AlertDialogAction 
+                      onClick={handleDelete}
+                      className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                    >
+                      Excluir
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            )}
             <Button
               type="button"
               variant="outline"
