@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from "react";
 import { PlusCircle, Trash2, Plus, X, Pencil } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
@@ -445,182 +444,83 @@ export function RecipeDialog({ recipeId, trigger, onSave }: RecipeDialogProps) {
           </Button>
         )}
       </DialogTrigger>
-      <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-3xl h-[90vh] flex flex-col">
         <DialogHeader>
           <DialogTitle>{recipeId ? "Editar Receita" : "Nova Receita"}</DialogTitle>
         </DialogHeader>
-        <form onSubmit={handleSubmit} className="space-y-6">
-          <div className="space-y-4 p-4 border rounded-lg">
-            <h3 className="font-semibold text-lg">Informações Básicas</h3>
-            <div>
-              <Label htmlFor="name">Nome da Receita*</Label>
-              <Input
-                id="name"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder="Ex: Brigadeiro Gourmet"
-              />
-            </div>
-
-            <div>
-              <Label htmlFor="category">Categoria</Label>
-              <Select value={category} onValueChange={setCategory}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecione uma categoria" />
-                </SelectTrigger>
-                <SelectContent>
-                  {CATEGORIES.map((cat) => (
-                    <SelectItem key={cat} value={cat}>
-                      {cat}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div>
-              <Label htmlFor="description">Descrição</Label>
-              <Textarea
-                id="description"
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                placeholder="Breve descrição da receita"
-                rows={3}
-              />
-            </div>
-          </div>
-
-          <div className="space-y-4 p-4 border rounded-lg">
-            <h3 className="font-semibold text-lg">Ingredientes</h3>
-            
-            <div className="flex flex-col sm:flex-row gap-4">
-              <div className="flex-1">
-                <Label htmlFor="ingredient">Ingrediente</Label>
-                <Combobox
-                  options={ingredientOptions}
-                  value={selectedIngredientId}
-                  onChange={setSelectedIngredientId}
-                  placeholder="Selecione um ingrediente"
-                  emptyMessage="Nenhum ingrediente encontrado"
-                />
-              </div>
-              
-              <div className="w-full sm:w-36">
-                <Label htmlFor="amount">Quantidade</Label>
+        <div className="flex-grow overflow-y-auto pr-2 -mr-2">
+          <form className="space-y-6">
+            <div className="space-y-4 p-4 border rounded-lg">
+              <h3 className="font-semibold text-lg">Informações Básicas</h3>
+              <div>
+                <Label htmlFor="name">Nome da Receita*</Label>
                 <Input
-                  id="amount"
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  value={selectedAmount}
-                  onChange={(e) => setSelectedAmount(e.target.value)}
+                  id="name"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  placeholder="Ex: Brigadeiro Gourmet"
                 />
               </div>
-              
-              <div className="self-end">
-                <Button 
-                  type="button" 
-                  onClick={handleAddIngredient}
-                  className="gap-2"
-                >
-                  <Plus size={16} />
-                  Adicionar
-                </Button>
+
+              <div>
+                <Label htmlFor="category">Categoria</Label>
+                <Select value={category} onValueChange={setCategory}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione uma categoria" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {CATEGORIES.map((cat) => (
+                      <SelectItem key={cat} value={cat}>
+                        {cat}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div>
+                <Label htmlFor="description">Descrição</Label>
+                <Textarea
+                  id="description"
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  placeholder="Breve descrição da receita"
+                  rows={3}
+                />
               </div>
             </div>
-            
-            {recipeIngredients.length > 0 ? (
-              <div className="border rounded-md overflow-hidden">
-                <table className="w-full">
-                  <thead className="bg-muted">
-                    <tr>
-                      <th className="text-left p-2">Ingrediente</th>
-                      <th className="text-center p-2">Quantidade</th>
-                      <th className="text-center p-2">Custo</th>
-                      <th className="text-right p-2">Ações</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {recipeIngredients.map((item, index) => {
-                      const ingredient = ingredients?.find(ing => ing.id === item.ingredient_id);
-                      const name = item.name || ingredient?.name || "Ingrediente";
-                      const unit = item.unit || ingredient?.unit || "";
-                      const costPerUnit = item.cost_per_unit || ingredient?.cost_per_unit || 0;
-                      const cost = costPerUnit * item.amount;
-                      
-                      return (
-                        <tr key={index} className="border-t">
-                          <td className="p-2">{name}</td>
-                          <td className="p-2 text-center">{item.amount} {unit}</td>
-                          <td className="p-2 text-center">R$ {cost.toFixed(2)}</td>
-                          <td className="p-2 text-right">
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => handleRemoveIngredient(index)}
-                            >
-                              <Trash2 size={16} className="text-destructive" />
-                            </Button>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            ) : (
-              <div className="text-center p-6 text-muted-foreground bg-muted/20 rounded-md">
-                Nenhum ingrediente adicionado
-              </div>
-            )}
-          </div>
 
-          <div className="space-y-4 p-4 border rounded-lg">
-            <h3 className="font-semibold text-lg">Porção/Unidade</h3>
-            
-            <div>
-              <Label htmlFor="servings">Quantidade de unidades ou porções que a receita produz*</Label>
-              <Input
-                id="servings"
-                type="number"
-                min="1"
-                value={servings}
-                onChange={(e) => setServings(e.target.value)}
-              />
-            </div>
-
-            <div className="mt-4 space-y-2">
-              <Label>Ingredientes por porção/unidade</Label>
+            <div className="space-y-4 p-4 border rounded-lg">
+              <h3 className="font-semibold text-lg">Ingredientes</h3>
               
               <div className="flex flex-col sm:flex-row gap-4">
                 <div className="flex-1">
-                  <Label htmlFor="servingIngredient">Ingrediente</Label>
+                  <Label htmlFor="ingredient">Ingrediente</Label>
                   <Combobox
                     options={ingredientOptions}
-                    value={selectedServingIngredientId}
-                    onChange={setSelectedServingIngredientId}
+                    value={selectedIngredientId}
+                    onChange={setSelectedIngredientId}
                     placeholder="Selecione um ingrediente"
                     emptyMessage="Nenhum ingrediente encontrado"
                   />
                 </div>
                 
                 <div className="w-full sm:w-36">
-                  <Label htmlFor="servingAmount">Quantidade por porção</Label>
+                  <Label htmlFor="amount">Quantidade</Label>
                   <Input
-                    id="servingAmount"
+                    id="amount"
                     type="number"
                     min="0"
                     step="0.01"
-                    value={selectedServingAmount}
-                    onChange={(e) => setSelectedServingAmount(e.target.value)}
+                    value={selectedAmount}
+                    onChange={(e) => setSelectedAmount(e.target.value)}
                   />
                 </div>
                 
                 <div className="self-end">
                   <Button 
                     type="button" 
-                    onClick={handleAddIngredientPerServing}
+                    onClick={handleAddIngredient}
                     className="gap-2"
                   >
                     <Plus size={16} />
@@ -629,32 +529,36 @@ export function RecipeDialog({ recipeId, trigger, onSave }: RecipeDialogProps) {
                 </div>
               </div>
               
-              {ingredientsPerServing.length > 0 ? (
-                <div className="border rounded-md overflow-hidden mt-4">
+              {recipeIngredients.length > 0 ? (
+                <div className="border rounded-md overflow-hidden">
                   <table className="w-full">
                     <thead className="bg-muted">
                       <tr>
                         <th className="text-left p-2">Ingrediente</th>
-                        <th className="text-center p-2">Quantidade por porção</th>
+                        <th className="text-center p-2">Quantidade</th>
+                        <th className="text-center p-2">Custo</th>
                         <th className="text-right p-2">Ações</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {ingredientsPerServing.map((item, index) => {
+                      {recipeIngredients.map((item, index) => {
                         const ingredient = ingredients?.find(ing => ing.id === item.ingredient_id);
                         const name = item.name || ingredient?.name || "Ingrediente";
                         const unit = item.unit || ingredient?.unit || "";
+                        const costPerUnit = item.cost_per_unit || ingredient?.cost_per_unit || 0;
+                        const cost = costPerUnit * item.amount;
                         
                         return (
                           <tr key={index} className="border-t">
                             <td className="p-2">{name}</td>
                             <td className="p-2 text-center">{item.amount} {unit}</td>
+                            <td className="p-2 text-center">R$ {cost.toFixed(2)}</td>
                             <td className="p-2 text-right">
                               <Button
                                 type="button"
                                 variant="ghost"
                                 size="icon"
-                                onClick={() => handleRemoveIngredientPerServing(index)}
+                                onClick={() => handleRemoveIngredient(index)}
                               >
                                 <Trash2 size={16} className="text-destructive" />
                               </Button>
@@ -666,68 +570,164 @@ export function RecipeDialog({ recipeId, trigger, onSave }: RecipeDialogProps) {
                   </table>
                 </div>
               ) : (
-                <div className="text-center p-4 text-muted-foreground bg-muted/20 rounded-md">
-                  Nenhum ingrediente por porção adicionado
+                <div className="text-center p-6 text-muted-foreground bg-muted/20 rounded-md">
+                  Nenhum ingrediente adicionado
                 </div>
               )}
             </div>
-          </div>
 
-          <div className="space-y-2 p-4 border rounded-lg bg-muted/20">
-            <h3 className="font-semibold text-lg">Custos</h3>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="space-y-4 p-4 border rounded-lg">
+              <h3 className="font-semibold text-lg">Porção/Unidade</h3>
+              
               <div>
-                <p className="text-sm text-muted-foreground">Custo total dos ingredientes</p>
-                <p className="text-lg font-semibold">R$ {totalCost.toFixed(2)}</p>
+                <Label htmlFor="servings">Quantidade de unidades ou porções que a receita produz*</Label>
+                <Input
+                  id="servings"
+                  type="number"
+                  min="1"
+                  value={servings}
+                  onChange={(e) => setServings(e.target.value)}
+                />
               </div>
-              <div>
-                <p className="text-sm text-muted-foreground">Custo por porção/unidade</p>
-                <p className="text-lg font-semibold">R$ {costPerUnit.toFixed(2)}</p>
+
+              <div className="mt-4 space-y-2">
+                <Label>Ingredientes por porção/unidade</Label>
+                
+                <div className="flex flex-col sm:flex-row gap-4">
+                  <div className="flex-1">
+                    <Label htmlFor="servingIngredient">Ingrediente</Label>
+                    <Combobox
+                      options={ingredientOptions}
+                      value={selectedServingIngredientId}
+                      onChange={setSelectedServingIngredientId}
+                      placeholder="Selecione um ingrediente"
+                      emptyMessage="Nenhum ingrediente encontrado"
+                    />
+                  </div>
+                  
+                  <div className="w-full sm:w-36">
+                    <Label htmlFor="servingAmount">Quantidade por porção</Label>
+                    <Input
+                      id="servingAmount"
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={selectedServingAmount}
+                      onChange={(e) => setSelectedServingAmount(e.target.value)}
+                    />
+                  </div>
+                  
+                  <div className="self-end">
+                    <Button 
+                      type="button" 
+                      onClick={handleAddIngredientPerServing}
+                      className="gap-2"
+                    >
+                      <Plus size={16} />
+                      Adicionar
+                    </Button>
+                  </div>
+                </div>
+                
+                {ingredientsPerServing.length > 0 ? (
+                  <div className="border rounded-md overflow-hidden mt-4">
+                    <table className="w-full">
+                      <thead className="bg-muted">
+                        <tr>
+                          <th className="text-left p-2">Ingrediente</th>
+                          <th className="text-center p-2">Quantidade por porção</th>
+                          <th className="text-right p-2">Ações</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {ingredientsPerServing.map((item, index) => {
+                          const ingredient = ingredients?.find(ing => ing.id === item.ingredient_id);
+                          const name = item.name || ingredient?.name || "Ingrediente";
+                          const unit = item.unit || ingredient?.unit || "";
+                          
+                          return (
+                            <tr key={index} className="border-t">
+                              <td className="p-2">{name}</td>
+                              <td className="p-2 text-center">{item.amount} {unit}</td>
+                              <td className="p-2 text-right">
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="icon"
+                                  onClick={() => handleRemoveIngredientPerServing(index)}
+                                >
+                                  <Trash2 size={16} className="text-destructive" />
+                                </Button>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                ) : (
+                  <div className="text-center p-4 text-muted-foreground bg-muted/20 rounded-md">
+                    Nenhum ingrediente por porção adicionado
+                  </div>
+                )}
               </div>
             </div>
-          </div>
 
-          <div className="flex justify-end gap-2">
-            {recipeId && (
-              <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
-                <AlertDialogTrigger asChild>
-                  <Button type="button" variant="destructive" disabled={isLoading}>
-                    <Trash2 size={16} className="mr-2" />
+            <div className="space-y-2 p-4 border rounded-lg bg-muted/20">
+              <h3 className="font-semibold text-lg">Custos</h3>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <p className="text-sm text-muted-foreground">Custo total dos ingredientes</p>
+                  <p className="text-lg font-semibold">R$ {totalCost.toFixed(2)}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Custo por porção/unidade</p>
+                  <p className="text-lg font-semibold">R$ {costPerUnit.toFixed(2)}</p>
+                </div>
+              </div>
+            </div>
+          </form>
+        </div>
+        <div className="flex justify-end gap-2 pt-4 border-t mt-4">
+          {recipeId && (
+            <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+              <AlertDialogTrigger asChild>
+                <Button type="button" variant="destructive" disabled={isLoading}>
+                  <Trash2 size={16} className="mr-2" />
+                  Excluir
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Excluir receita</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    Tem certeza que deseja excluir a receita "{name}"? Esta ação não pode ser desfeita.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                  <AlertDialogAction 
+                    onClick={handleDelete}
+                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                  >
                     Excluir
-                  </Button>
-                </AlertDialogTrigger>
-                <AlertDialogContent>
-                  <AlertDialogHeader>
-                    <AlertDialogTitle>Excluir receita</AlertDialogTitle>
-                    <AlertDialogDescription>
-                      Tem certeza que deseja excluir a receita "{name}"? Esta ação não pode ser desfeita.
-                    </AlertDialogDescription>
-                  </AlertDialogHeader>
-                  <AlertDialogFooter>
-                    <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                    <AlertDialogAction 
-                      onClick={handleDelete}
-                      className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                    >
-                      Excluir
-                    </AlertDialogAction>
-                  </AlertDialogFooter>
-                </AlertDialogContent>
-              </AlertDialog>
-            )}
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => setOpen(false)}
-              disabled={isLoading}
-            >
-              Cancelar
-            </Button>
-            <Button type="submit" disabled={isLoading}>
-              {isLoading ? "Salvando..." : (recipeId ? "Atualizar" : "Criar")}
-            </Button>
-          </div>
-        </form>
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          )}
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => setOpen(false)}
+            disabled={isLoading}
+          >
+            Cancelar
+          </Button>
+          <Button type="button" onClick={handleSubmit} disabled={isLoading}>
+            {isLoading ? "Salvando..." : (recipeId ? "Atualizar" : "Criar")}
+          </Button>
+        </div>
       </DialogContent>
     </Dialog>
   );

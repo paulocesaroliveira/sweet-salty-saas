@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -43,7 +42,6 @@ export function ProductPricingDialog({
   const [profitMargin, setProfitMargin] = useState("");
   const [yieldAmount, setYieldAmount] = useState("");
 
-  // Buscar receitas disponíveis
   const { data: recipes } = useQuery({
     queryKey: ["recipes"],
     queryFn: async () => {
@@ -57,7 +55,6 @@ export function ProductPricingDialog({
     },
   });
 
-  // Buscar custo de mão de obra por hora
   const { data: laborCost } = useQuery({
     queryKey: ["labor-cost"],
     queryFn: async () => {
@@ -71,7 +68,6 @@ export function ProductPricingDialog({
     },
   });
 
-  // Buscar custos fixos mensais totais
   const { data: fixedCosts } = useQuery({
     queryKey: ["fixed-costs-total"],
     queryFn: async () => {
@@ -81,7 +77,6 @@ export function ProductPricingDialog({
 
       if (error) throw error;
 
-      // Calcular total mensal (custos mensais + custos anuais divididos por 12)
       return data.reduce((total, cost) => {
         if (cost.frequency === "monthly") {
           return total + cost.amount;
@@ -93,7 +88,6 @@ export function ProductPricingDialog({
     },
   });
 
-  // Buscar precificação existente se estiver editando
   const { data: pricing } = useQuery({
     queryKey: ["pricing", pricingId],
     queryFn: async () => {
@@ -134,7 +128,7 @@ export function ProductPricingDialog({
     if (!recipe) return null;
 
     const laborCostValue = (Number(laborMinutes) / 60) * laborCost.hourly_rate;
-    const fixedCostShare = fixedCosts * 0.01; // 1% dos custos fixos por produto
+    const fixedCostShare = fixedCosts * 0.01;
     const totalCost = recipe.total_cost + laborCostValue + Number(packagingCost) + fixedCostShare;
     const profitValue = totalCost * (Number(profitMargin) / 100);
     const finalPrice = totalCost + profitValue;
@@ -199,86 +193,86 @@ export function ProductPricingDialog({
 
   return (
     <Dialog open={open} onOpenChange={() => onClose()}>
-      <DialogContent className="max-w-2xl">
+      <DialogContent className="max-w-2xl h-[90vh] flex flex-col">
         <DialogHeader>
           <DialogTitle>
             {pricingId ? "Editar Precificação" : "Nova Precificação"}
           </DialogTitle>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="space-y-6">
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="recipe">Receita</Label>
-              <Select value={recipeId} onValueChange={setRecipeId}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecione uma receita" />
-                </SelectTrigger>
-                <SelectContent>
-                  {recipes?.map((recipe) => (
-                    <SelectItem key={recipe.id} value={recipe.id}>
-                      {recipe.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+        <div className="flex-grow overflow-y-auto pr-2 -mr-2">
+          <form className="space-y-6">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="recipe">Receita</Label>
+                <Select value={recipeId} onValueChange={setRecipeId}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione uma receita" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {recipes?.map((recipe) => (
+                      <SelectItem key={recipe.id} value={recipe.id}>
+                        {recipe.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="yieldAmount">Rendimento (unidades)</Label>
+                <Input
+                  id="yieldAmount"
+                  type="number"
+                  min="1"
+                  value={yieldAmount}
+                  onChange={(e) => setYieldAmount(e.target.value)}
+                  required
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="laborMinutes">Tempo de Trabalho (minutos)</Label>
+                <Input
+                  id="laborMinutes"
+                  type="number"
+                  min="0"
+                  value={laborMinutes}
+                  onChange={(e) => setLaborMinutes(e.target.value)}
+                  required
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="packagingCost">Custo de Embalagem</Label>
+                <Input
+                  id="packagingCost"
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  value={packagingCost}
+                  onChange={(e) => setPackagingCost(e.target.value)}
+                  required
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="profitMargin">Margem de Lucro (%)</Label>
+                <Input
+                  id="profitMargin"
+                  type="number"
+                  min="0"
+                  max="1000"
+                  value={profitMargin}
+                  onChange={(e) => setProfitMargin(e.target.value)}
+                  required
+                />
+              </div>
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="yieldAmount">Rendimento (unidades)</Label>
-              <Input
-                id="yieldAmount"
-                type="number"
-                min="1"
-                value={yieldAmount}
-                onChange={(e) => setYieldAmount(e.target.value)}
-                required
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="laborMinutes">Tempo de Trabalho (minutos)</Label>
-              <Input
-                id="laborMinutes"
-                type="number"
-                min="0"
-                value={laborMinutes}
-                onChange={(e) => setLaborMinutes(e.target.value)}
-                required
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="packagingCost">Custo de Embalagem</Label>
-              <Input
-                id="packagingCost"
-                type="number"
-                step="0.01"
-                min="0"
-                value={packagingCost}
-                onChange={(e) => setPackagingCost(e.target.value)}
-                required
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="profitMargin">Margem de Lucro (%)</Label>
-              <Input
-                id="profitMargin"
-                type="number"
-                min="0"
-                max="1000"
-                value={profitMargin}
-                onChange={(e) => setProfitMargin(e.target.value)}
-                required
-              />
-            </div>
-          </div>
-
-          {recipeId && laborMinutes && packagingCost && profitMargin && yieldAmount && (
-            <Card>
-              <CardContent className="pt-6">
-                <div className="grid grid-cols-2 gap-4">
+            {recipeId && laborMinutes && packagingCost && profitMargin && yieldAmount && (
+              <Card>
+                <CardContent className="pt-6">
                   {(() => {
                     const pricing = calculatePricing();
                     if (!pricing) return null;
@@ -312,25 +306,25 @@ export function ProductPricingDialog({
                       </>
                     );
                   })()}
-                </div>
-              </CardContent>
-            </Card>
-          )}
+                </CardContent>
+              </Card>
+            )}
+          </form>
+        </div>
 
-          <div className="flex justify-end gap-2">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={onClose}
-              disabled={isLoading}
-            >
-              Cancelar
-            </Button>
-            <Button type="submit" disabled={isLoading}>
-              {pricingId ? "Atualizar" : "Salvar"}
-            </Button>
-          </div>
-        </form>
+        <div className="flex justify-end gap-2 pt-4 border-t mt-4">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={onClose}
+            disabled={isLoading}
+          >
+            Cancelar
+          </Button>
+          <Button type="button" onClick={handleSubmit} disabled={isLoading}>
+            {pricingId ? "Atualizar" : "Salvar"}
+          </Button>
+        </div>
       </DialogContent>
     </Dialog>
   );

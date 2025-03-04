@@ -45,6 +45,7 @@ export function Combobox({
   disabled = false,
 }: ComboboxProps) {
   const [open, setOpen] = React.useState(false)
+  const [inputValue, setInputValue] = React.useState("")
   
   const selectedOption = React.useMemo(() => 
     options.find((option) => option.value === value),
@@ -62,6 +63,7 @@ export function Combobox({
           )}
           onClick={() => setOpen(!open)}
           disabled={disabled}
+          type="button"
         >
           <span>
             {selectedOption?.label || placeholder}
@@ -75,8 +77,16 @@ export function Combobox({
         </button>
       </PopoverTrigger>
       <PopoverContent className="w-full p-0" align="start">
-        <Command className="w-full">
-          <CommandInput placeholder={`Buscar ${placeholder.toLowerCase()}...`} className="h-9" />
+        <Command filter={(value, search) => {
+          if (value.toLowerCase().includes(search.toLowerCase())) return 1
+          return 0
+        }}>
+          <CommandInput 
+            placeholder={`Buscar ${placeholder.toLowerCase()}...`} 
+            value={inputValue}
+            onValueChange={setInputValue}
+            className="h-9" 
+          />
           <CommandEmpty>{emptyMessage}</CommandEmpty>
           <CommandGroup className="max-h-64 overflow-auto">
             {options.map((option) => (
@@ -86,10 +96,11 @@ export function Combobox({
                 onSelect={() => {
                   onChange(option.value === value ? "" : option.value)
                   setOpen(false)
+                  setInputValue("")
                 }}
               >
                 <div className="flex items-center justify-between w-full">
-                  <div>
+                  <div className="flex items-center">
                     <Check
                       className={cn(
                         "mr-2 h-4 w-4",

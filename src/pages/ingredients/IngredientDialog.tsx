@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from "react";
 import { PlusCircle, Pencil, Trash2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
@@ -105,7 +104,15 @@ export function IngredientDialog({ onSave, ingredient }: IngredientDialogProps) 
     }
   }, [ingredient]);
 
-  // Set default unit when type changes
+  const handleTypeChange = (newType: string) => {
+    const validType = newType as "solid" | "liquid" | "pó";
+    setType(validType);
+    
+    if (validType && VALID_UNITS[validType] && VALID_UNITS[validType].length > 0) {
+      setUnit(VALID_UNITS[validType][0].value);
+    }
+  };
+
   useEffect(() => {
     if (type && VALID_UNITS[type] && VALID_UNITS[type].length > 0) {
       setUnit(VALID_UNITS[type][0].value);
@@ -149,13 +156,11 @@ export function IngredientDialog({ onSave, ingredient }: IngredientDialogProps) 
 
       let error;
       if (ingredient) {
-        // Update
         ({ error } = await supabase
           .from("ingredients")
           .update(data)
           .eq("id", ingredient.id));
       } else {
-        // Insert
         ({ error } = await supabase.from("ingredients").insert(data));
       }
 
@@ -186,7 +191,6 @@ export function IngredientDialog({ onSave, ingredient }: IngredientDialogProps) 
     
     setIsLoading(true);
     try {
-      // Check if the ingredient is used in any recipes
       const { data: recipeIngredients, error: checkError } = await supabase
         .from("recipe_ingredients")
         .select("id")
@@ -246,7 +250,7 @@ export function IngredientDialog({ onSave, ingredient }: IngredientDialogProps) 
           </Button>
         )}
       </DialogTrigger>
-      <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-lg h-[90vh] flex flex-col">
         <DialogHeader>
           <DialogTitle>
             {ingredient ? "Editar Ingrediente" : "Novo Ingrediente"}
@@ -255,167 +259,166 @@ export function IngredientDialog({ onSave, ingredient }: IngredientDialogProps) 
             Preencha os dados do ingrediente. O custo por unidade será calculado automaticamente.
           </DialogDescription>
         </DialogHeader>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="grid sm:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="name">Nome *</Label>
-              <Input
-                id="name"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder="Ex: Farinha de Trigo"
-              />
+        <div className="flex-grow overflow-y-auto pr-2 -mr-2">
+          <form className="space-y-4">
+            <div className="grid sm:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="name">Nome *</Label>
+                <Input
+                  id="name"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  placeholder="Ex: Farinha de Trigo"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="category">Categoria</Label>
+                <Select value={category} onValueChange={setCategory}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione uma categoria" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {CATEGORIES.map((cat) => (
+                      <SelectItem key={cat} value={cat}>
+                        {cat}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="category">Categoria</Label>
-              <Select value={category} onValueChange={setCategory}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecione uma categoria" />
-                </SelectTrigger>
-                <SelectContent>
-                  {CATEGORIES.map((cat) => (
-                    <SelectItem key={cat} value={cat}>
-                      {cat}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
+            <div className="grid sm:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="type">Tipo *</Label>
+                <Select 
+                  value={type} 
+                  onValueChange={handleTypeChange}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione o tipo" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="solid">Sólido</SelectItem>
+                    <SelectItem value="liquid">Líquido</SelectItem>
+                    <SelectItem value="pó">Pó</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
 
-          <div className="grid sm:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="type">Tipo *</Label>
-              <Select 
-                value={type} 
-                onValueChange={(value: "solid" | "liquid" | "pó") => {
-                  setType(value);
-                }}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecione o tipo" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="solid">Sólido</SelectItem>
-                  <SelectItem value="liquid">Líquido</SelectItem>
-                  <SelectItem value="pó">Pó</SelectItem>
-                </SelectContent>
-              </Select>
+              <div className="space-y-2">
+                <Label htmlFor="unit">Unidade de Medida *</Label>
+                <Select value={unit} onValueChange={setUnit}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione uma unidade" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {availableUnits.map((unit) => (
+                      <SelectItem key={unit.value} value={unit.value}>
+                        {unit.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="unit">Unidade de Medida *</Label>
-              <Select value={unit} onValueChange={setUnit}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecione uma unidade" />
-                </SelectTrigger>
-                <SelectContent>
-                  {availableUnits.map((unit) => (
-                    <SelectItem key={unit.value} value={unit.value}>
-                      {unit.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
+            <div className="grid sm:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="brand">Marca</Label>
+                <Input
+                  id="brand"
+                  value={brand}
+                  onChange={(e) => setBrand(e.target.value)}
+                  placeholder="Ex: Dona Benta"
+                />
+              </div>
 
-          <div className="grid sm:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="brand">Marca</Label>
-              <Input
-                id="brand"
-                value={brand}
-                onChange={(e) => setBrand(e.target.value)}
-                placeholder="Ex: Dona Benta"
-              />
+              <div className="space-y-2">
+                <Label htmlFor="supplier">Fornecedor</Label>
+                <Input
+                  id="supplier"
+                  value={supplier}
+                  onChange={(e) => setSupplier(e.target.value)}
+                  placeholder="Ex: Distribuidora ABC"
+                />
+              </div>
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="supplier">Fornecedor</Label>
-              <Input
-                id="supplier"
-                value={supplier}
-                onChange={(e) => setSupplier(e.target.value)}
-                placeholder="Ex: Distribuidora ABC"
-              />
+            <div className="grid sm:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="packageAmount">Qtd. Embalagem *</Label>
+                <Input
+                  id="packageAmount"
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  value={packageAmount}
+                  onChange={(e) => setPackageAmount(e.target.value)}
+                  placeholder={`Ex: 1000 ${unit}`}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="packageCost">Custo da Emb. (R$) *</Label>
+                <Input
+                  id="packageCost"
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  value={packageCost}
+                  onChange={(e) => setPackageCost(e.target.value)}
+                  placeholder="Ex: 15.90"
+                />
+              </div>
             </div>
-          </div>
 
-          <div className="grid sm:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="packageAmount">Qtd. Embalagem *</Label>
-              <Input
-                id="packageAmount"
-                type="number"
-                step="0.01"
-                min="0"
-                value={packageAmount}
-                onChange={(e) => setPackageAmount(e.target.value)}
-                placeholder={`Ex: 1000 ${unit}`}
-              />
+            <div className="text-sm text-muted-foreground">
+              Custo por {unit || 'unidade'}: R$ {calculateCostPerUnit()}
             </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="packageCost">Custo da Emb. (R$) *</Label>
-              <Input
-                id="packageCost"
-                type="number"
-                step="0.01"
-                min="0"
-                value={packageCost}
-                onChange={(e) => setPackageCost(e.target.value)}
-                placeholder="Ex: 15.90"
-              />
-            </div>
-          </div>
-
-          <div className="text-sm text-muted-foreground">
-            Custo por {unit || 'unidade'}: R$ {calculateCostPerUnit()}
-          </div>
-
-          <div className="flex justify-end gap-2">
-            {ingredient && (
-              <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
-                <AlertDialogTrigger asChild>
-                  <Button type="button" variant="destructive" disabled={isLoading}>
-                    <Trash2 size={16} className="mr-2" />
+          </form>
+        </div>
+        <div className="flex justify-end gap-2 pt-4 border-t mt-4">
+          {ingredient && (
+            <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+              <AlertDialogTrigger asChild>
+                <Button type="button" variant="destructive" disabled={isLoading}>
+                  <Trash2 size={16} className="mr-2" />
+                  Excluir
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Excluir ingrediente</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    Tem certeza que deseja excluir o ingrediente "{ingredient.name}"? Esta ação não pode ser desfeita.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                  <AlertDialogAction 
+                    onClick={handleDelete}
+                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                  >
                     Excluir
-                  </Button>
-                </AlertDialogTrigger>
-                <AlertDialogContent>
-                  <AlertDialogHeader>
-                    <AlertDialogTitle>Excluir ingrediente</AlertDialogTitle>
-                    <AlertDialogDescription>
-                      Tem certeza que deseja excluir o ingrediente "{ingredient.name}"? Esta ação não pode ser desfeita.
-                    </AlertDialogDescription>
-                  </AlertDialogHeader>
-                  <AlertDialogFooter>
-                    <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                    <AlertDialogAction 
-                      onClick={handleDelete}
-                      className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                    >
-                      Excluir
-                    </AlertDialogAction>
-                  </AlertDialogFooter>
-                </AlertDialogContent>
-              </AlertDialog>
-            )}
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => setOpen(false)}
-              disabled={isLoading}
-            >
-              Cancelar
-            </Button>
-            <Button type="submit" disabled={isLoading}>
-              {isLoading ? "Salvando..." : "Salvar"}
-            </Button>
-          </div>
-        </form>
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          )}
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => setOpen(false)}
+            disabled={isLoading}
+          >
+            Cancelar
+          </Button>
+          <Button type="button" onClick={handleSubmit} disabled={isLoading}>
+            {isLoading ? "Salvando..." : "Salvar"}
+          </Button>
+        </div>
       </DialogContent>
     </Dialog>
   );
