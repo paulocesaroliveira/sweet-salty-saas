@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from "react";
 import { PlusCircle, Trash2, Plus, X, Pencil } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
@@ -8,6 +9,7 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
