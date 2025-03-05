@@ -48,15 +48,20 @@ export function Combobox({
   const [search, setSearch] = React.useState("")
   
   const selectedOption = React.useMemo(() => 
-    options.find((option) => option.value === value),
+    options?.find((option) => option.value === value),
   [options, value])
 
+  // Ensure options is always an array even if undefined is passed somehow
+  const safeOptions = React.useMemo(() => 
+    Array.isArray(options) ? options : [],
+  [options])
+
   const filteredOptions = React.useMemo(() => {
-    if (!search) return options
-    return options.filter((option) => 
+    if (!search) return safeOptions
+    return safeOptions.filter((option) => 
       option.label.toLowerCase().includes(search.toLowerCase())
     )
-  }, [options, search])
+  }, [safeOptions, search])
 
   return (
     <Popover open={open} onOpenChange={(isOpen) => {
