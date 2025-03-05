@@ -36,7 +36,7 @@ interface ComboboxProps {
 }
 
 export function Combobox({
-  options = [], // Ensure options is never undefined
+  options = [],
   value,
   onChange,
   placeholder = "Selecione uma opção",
@@ -45,32 +45,12 @@ export function Combobox({
   disabled = false,
 }: ComboboxProps) {
   const [open, setOpen] = React.useState(false)
-  const [search, setSearch] = React.useState("")
   
-  const selectedOption = React.useMemo(() => 
-    options?.find((option) => option.value === value),
-  [options, value])
-
-  // Ensure options is always an array even if undefined is passed somehow
-  const safeOptions = React.useMemo(() => 
-    Array.isArray(options) ? options : [],
-  [options])
-
-  const filteredOptions = React.useMemo(() => {
-    if (!search) return safeOptions
-    return safeOptions.filter((option) => 
-      option.label.toLowerCase().includes(search.toLowerCase())
-    )
-  }, [safeOptions, search])
+  // Find the selected option from the options array
+  const selectedOption = options.find((option) => option.value === value)
 
   return (
-    <Popover open={open} onOpenChange={(isOpen) => {
-      setOpen(isOpen)
-      if (!isOpen) {
-        // Reset search when closing
-        setSearch("")
-      }
-    }}>
+    <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
         <button
           type="button"
@@ -95,26 +75,22 @@ export function Combobox({
         </button>
       </PopoverTrigger>
       <PopoverContent className="w-full p-0" align="start">
-        <Command shouldFilter={false}>
+        <Command>
           <CommandInput 
             placeholder={`Buscar ${placeholder.toLowerCase()}...`} 
-            value={search}
-            onValueChange={setSearch}
             className="h-9" 
-            autoFocus
           />
-          {filteredOptions.length === 0 ? (
+          {options.length === 0 ? (
             <CommandEmpty>{emptyMessage}</CommandEmpty>
           ) : (
             <CommandGroup className="max-h-64 overflow-auto">
-              {filteredOptions.map((option) => (
+              {options.map((option) => (
                 <CommandItem
                   key={option.value}
                   value={option.value}
                   onSelect={() => {
                     onChange(option.value === value ? "" : option.value)
                     setOpen(false)
-                    setSearch("")
                   }}
                 >
                   <div className="flex items-center justify-between w-full">
