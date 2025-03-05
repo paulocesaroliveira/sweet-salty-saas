@@ -6,17 +6,14 @@ import { Check, ChevronsUpDown } from "lucide-react"
 
 import { cn } from "@/lib/utils"
 import {
-  Command,
-  CommandEmpty,
-  CommandGroup,
-  CommandInput,
-  CommandItem,
-} from "@/components/ui/command"
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover"
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectLabel,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 
 export type ComboboxOption = {
   value: string
@@ -44,77 +41,48 @@ export function Combobox({
   className,
   disabled = false,
 }: ComboboxProps) {
-  const [open, setOpen] = React.useState(false)
-  
   // Find the selected option from the options array
   const selectedOption = options.find((option) => option.value === value)
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild>
-        <button
-          type="button"
-          role="combobox"
-          aria-expanded={open}
-          className={cn(
-            "flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 [&>span]:line-clamp-1",
-            className
+    <Select value={value} onValueChange={onChange} disabled={disabled}>
+      <SelectTrigger 
+        className={cn(
+          "w-full",
+          className
+        )}
+      >
+        <SelectValue placeholder={placeholder}>
+          {selectedOption?.label || placeholder}
+          {selectedOption?.package_amount && (
+            <span className="text-muted-foreground ml-1 text-xs">
+              (emb: {selectedOption.package_amount} {selectedOption.unit})
+            </span>
           )}
-          onClick={() => setOpen(!open)}
-          disabled={disabled}
-        >
-          <span>
-            {selectedOption?.label || placeholder}
-            {selectedOption?.package_amount && 
-              <span className="text-muted-foreground ml-1 text-xs">
-                (emb: {selectedOption.package_amount} {selectedOption.unit})
-              </span>
-            }
-          </span>
-          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-        </button>
-      </PopoverTrigger>
-      <PopoverContent className="w-full p-0" align="start">
-        <Command>
-          <CommandInput 
-            placeholder={`Buscar ${placeholder.toLowerCase()}...`} 
-            className="h-9" 
-          />
+        </SelectValue>
+      </SelectTrigger>
+      <SelectContent>
+        <SelectGroup>
           {options.length === 0 ? (
-            <CommandEmpty>{emptyMessage}</CommandEmpty>
+            <SelectLabel>{emptyMessage}</SelectLabel>
           ) : (
-            <CommandGroup className="max-h-64 overflow-auto">
-              {options.map((option) => (
-                <CommandItem
-                  key={option.value}
-                  value={option.value}
-                  onSelect={() => {
-                    onChange(option.value === value ? "" : option.value)
-                    setOpen(false)
-                  }}
-                >
-                  <div className="flex items-center justify-between w-full">
-                    <div className="flex items-center">
-                      <Check
-                        className={cn(
-                          "mr-2 h-4 w-4",
-                          value === option.value ? "opacity-100" : "opacity-0"
-                        )}
-                      />
-                      {option.label}
-                    </div>
-                    {option.package_amount && (
-                      <span className="text-muted-foreground text-xs">
-                        Emb: {option.package_amount} {option.unit}
-                      </span>
-                    )}
+            options.map((option) => (
+              <SelectItem key={option.value} value={option.value}>
+                <div className="flex items-center justify-between w-full">
+                  <div className="flex items-center">
+                    {option.label}
                   </div>
-                </CommandItem>
-              ))}
-            </CommandGroup>
+                  {option.package_amount && (
+                    <span className="text-muted-foreground text-xs ml-2">
+                      Emb: {option.package_amount} {option.unit}
+                    </span>
+                  )}
+                </div>
+              </SelectItem>
+            ))
           )}
-        </Command>
-      </PopoverContent>
-    </Popover>
+        </SelectGroup>
+      </SelectContent>
+    </Select>
   )
 }

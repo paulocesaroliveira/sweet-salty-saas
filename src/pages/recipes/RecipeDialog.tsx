@@ -110,7 +110,7 @@ export function RecipeDialog({ recipeId, trigger, onSave }: RecipeDialogProps) {
   const [totalCost, setTotalCost] = useState(0);
   const [costPerUnit, setCostPerUnit] = useState(0);
 
-  const { data: ingredients } = useQuery({
+  const { data: ingredients = [] } = useQuery({
     queryKey: ["ingredients"],
     queryFn: async () => {
       const { data, error } = await supabase
