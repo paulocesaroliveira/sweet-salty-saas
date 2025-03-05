@@ -36,7 +36,7 @@ interface ComboboxProps {
 }
 
 export function Combobox({
-  options,
+  options = [], // Ensure options is never undefined
   value,
   onChange,
   placeholder = "Selecione uma opção",
@@ -58,19 +58,17 @@ export function Combobox({
     )
   }, [options, search])
 
-  // Abrir o popover automaticamente quando o usuário clica no input
-  const handleOpenChange = (isOpen: boolean) => {
-    setOpen(isOpen)
-    if (!isOpen) {
-      // Limpar a busca ao fechar
-      setSearch("")
-    }
-  }
-
   return (
-    <Popover open={open} onOpenChange={handleOpenChange}>
+    <Popover open={open} onOpenChange={(isOpen) => {
+      setOpen(isOpen)
+      if (!isOpen) {
+        // Reset search when closing
+        setSearch("")
+      }
+    }}>
       <PopoverTrigger asChild>
         <button
+          type="button"
           role="combobox"
           aria-expanded={open}
           className={cn(
@@ -79,7 +77,6 @@ export function Combobox({
           )}
           onClick={() => setOpen(!open)}
           disabled={disabled}
-          type="button"
         >
           <span>
             {selectedOption?.label || placeholder}
@@ -93,7 +90,7 @@ export function Combobox({
         </button>
       </PopoverTrigger>
       <PopoverContent className="w-full p-0" align="start">
-        <Command>
+        <Command shouldFilter={false}>
           <CommandInput 
             placeholder={`Buscar ${placeholder.toLowerCase()}...`} 
             value={search}
@@ -101,37 +98,40 @@ export function Combobox({
             className="h-9" 
             autoFocus
           />
-          <CommandEmpty>{emptyMessage}</CommandEmpty>
-          <CommandGroup className="max-h-64 overflow-auto">
-            {filteredOptions.map((option) => (
-              <CommandItem
-                key={option.value}
-                value={option.value}
-                onSelect={() => {
-                  onChange(option.value === value ? "" : option.value)
-                  setOpen(false)
-                  setSearch("")
-                }}
-              >
-                <div className="flex items-center justify-between w-full">
-                  <div className="flex items-center">
-                    <Check
-                      className={cn(
-                        "mr-2 h-4 w-4",
-                        value === option.value ? "opacity-100" : "opacity-0"
-                      )}
-                    />
-                    {option.label}
+          {filteredOptions.length === 0 ? (
+            <CommandEmpty>{emptyMessage}</CommandEmpty>
+          ) : (
+            <CommandGroup className="max-h-64 overflow-auto">
+              {filteredOptions.map((option) => (
+                <CommandItem
+                  key={option.value}
+                  value={option.value}
+                  onSelect={() => {
+                    onChange(option.value === value ? "" : option.value)
+                    setOpen(false)
+                    setSearch("")
+                  }}
+                >
+                  <div className="flex items-center justify-between w-full">
+                    <div className="flex items-center">
+                      <Check
+                        className={cn(
+                          "mr-2 h-4 w-4",
+                          value === option.value ? "opacity-100" : "opacity-0"
+                        )}
+                      />
+                      {option.label}
+                    </div>
+                    {option.package_amount && (
+                      <span className="text-muted-foreground text-xs">
+                        Emb: {option.package_amount} {option.unit}
+                      </span>
+                    )}
                   </div>
-                  {option.package_amount && (
-                    <span className="text-muted-foreground text-xs">
-                      Emb: {option.package_amount} {option.unit}
-                    </span>
-                  )}
-                </div>
-              </CommandItem>
-            ))}
-          </CommandGroup>
+                </CommandItem>
+              ))}
+            </CommandGroup>
+          )}
         </Command>
       </PopoverContent>
     </Popover>

@@ -118,7 +118,7 @@ export function RecipeDialog({ recipeId, trigger, onSave }: RecipeDialogProps) {
         .order("name");
 
       if (error) throw error;
-      return data as Ingredient[];
+      return data as Ingredient[] || [];
     },
   });
 
@@ -384,7 +384,6 @@ export function RecipeDialog({ recipeId, trigger, onSave }: RecipeDialogProps) {
     
     setIsLoading(true);
     try {
-      // Delete recipe ingredients first
       const { error: deleteIngredientsError } = await supabase
         .from("recipe_ingredients")
         .delete()
@@ -392,7 +391,6 @@ export function RecipeDialog({ recipeId, trigger, onSave }: RecipeDialogProps) {
       
       if (deleteIngredientsError) throw deleteIngredientsError;
       
-      // Then delete the recipe
       const { error } = await supabase
         .from("recipes")
         .delete()
@@ -427,12 +425,14 @@ export function RecipeDialog({ recipeId, trigger, onSave }: RecipeDialogProps) {
     setSelectedServingAmount("0");
   };
 
-  const ingredientOptions: ComboboxOption[] = ingredients?.map(ingredient => ({
-    value: ingredient.id,
-    label: ingredient.name,
-    unit: ingredient.unit,
-    package_amount: ingredient.package_amount
-  })) || [];
+  const ingredientOptions: ComboboxOption[] = ingredients
+    ? ingredients.map(ingredient => ({
+        value: ingredient.id,
+        label: ingredient.name,
+        unit: ingredient.unit,
+        package_amount: ingredient.package_amount
+      }))
+    : [];
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -447,6 +447,9 @@ export function RecipeDialog({ recipeId, trigger, onSave }: RecipeDialogProps) {
       <DialogContent className="max-w-3xl h-[90vh] flex flex-col">
         <DialogHeader>
           <DialogTitle>{recipeId ? "Editar Receita" : "Nova Receita"}</DialogTitle>
+          <DialogDescription>
+            Preencha os dados da receita e adicione os ingredientes necessários.
+          </DialogDescription>
         </DialogHeader>
         <div className="flex-grow overflow-y-auto pr-2 -mr-2">
           <form className="space-y-6">
