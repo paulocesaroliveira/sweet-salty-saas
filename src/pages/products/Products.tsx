@@ -1,37 +1,100 @@
 
-import { Plus } from "lucide-react";
+import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { Plus, Search, Filter } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Badge } from "@/components/ui/badge";
+import { ProductList } from "./components/ProductList";
+import { ProductDialog } from "./components/ProductDialog";
+import { useAuth } from "@/contexts/AuthContext";
+import { Combobox } from "@/components/ui/combobox";
+
+export type Product = {
+  id: string;
+  name: string;
+  description: string | null;
+  price: number;
+  image_url: string | null;
+  active: boolean;
+  category: string | null;
+  visible_in_store: boolean;
+  cost: number;
+  profit_margin: number;
+  created_at: string;
+  updated_at: string;
+};
 
 const Products = () => {
-  const products = [
-    {
-      id: 1,
-      name: "Bolo de Chocolate",
-      price: 45.90,
-      image: "/placeholder.svg",
-      category: "Bolos",
-      status: "active"
+  const { user } = useAuth();
+  const [searchTerm, setSearchTerm] = useState("");
+  const [selectedCategory, setSelectedCategory] = useState("all");
+  const [showActiveOnly, setShowActiveOnly] = useState(false);
+  const [editingProductId, setEditingProductId] = useState<string | null>(null);
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+
+  const { data: products, refetch } = useQuery({
+    queryKey: ["products"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("products")
+        .select("*")
+        .order("name");
+
+      if (error) throw error;
+      return data as Product[];
     },
-    {
-      id: 2,
-      name: "Cupcake Red Velvet",
-      price: 12.90,
-      image: "/placeholder.svg",
-      category: "Cupcakes",
-      status: "active"
+  });
+
+  const { data: categories } = useQuery({
+    queryKey: ["product-categories"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("products")
+        .select("category")
+        .not("category", "is", null);
+
+      if (error) throw error;
+      
+      // Extract unique categories
+      const uniqueCategories = [...new Set(data.map(item => item.category).filter(Boolean))];
+      return uniqueCategories;
     },
-    {
-      id: 3,
-      name: "Brigadeiros Gourmet",
-      price: 3.50,
-      image: "/placeholder.svg",
-      category: "Doces",
-      status: "active"
-    },
-  ];
+  });
+
+  const handleNewProduct = () => {
+    setEditingProductId(null);
+    setIsDialogOpen(true);
+  };
+
+  const handleEditProduct = (productId: string) => {
+    setEditingProductId(productId);
+    setIsDialogOpen(true);
+  };
+
+  const handleCloseDialog = () => {
+    setIsDialogOpen(false);
+    setEditingProductId(null);
+  };
+
+  const filteredProducts = products?.filter(product => {
+    // Filter by search term
+    const matchesSearch = product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (product.description?.toLowerCase() || "").includes(searchTerm.toLowerCase());
+    
+    // Filter by category
+    const matchesCategory = selectedCategory === "all" || product.category === selectedCategory;
+    
+    // Filter by active status
+    const matchesActiveStatus = !showActiveOnly || product.visible_in_store;
+    
+    return matchesSearch && matchesCategory && matchesActiveStatus;
+  });
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-display mb-2">Produtos</h1>
@@ -40,54 +103,83 @@ const Products = () => {
           </p>
         </div>
         
-        <Button className="bg-primary hover:bg-primary-hover">
+        <Button onClick={handleNewProduct} className="bg-primary hover:bg-primary/90">
           <Plus className="mr-2" size={20} />
           Novo Produto
         </Button>
       </div>
 
-      <div className="flex gap-4 flex-wrap">
-        {["Todos", "Bolos", "Cupcakes", "Doces", "Salgados"].map((category) => (
-          <Button
-            key={category}
-            variant="outline"
-            className="hover:bg-accent"
-          >
-            {category}
-          </Button>
-        ))}
+      <div className="flex flex-col md:flex-row md:items-center gap-4">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" size={18} />
+          <Input
+            placeholder="Buscar produtos..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="pl-10"
+          />
+        </div>
+
+        <div className="flex gap-2 items-center">
+          <Filter size={16} className="text-muted-foreground" />
+          {categories && categories.length > 0 ? (
+            <Combobox
+              options={[
+                { value: "all", label: "Todas categorias" },
+                ...categories.map(cat => ({ value: cat, label: cat }))
+              ]}
+              value={selectedCategory}
+              onChange={setSelectedCategory}
+              className="w-[200px]"
+            />
+          ) : (
+            <Button variant="outline" size="sm" disabled>
+              Sem categorias
+            </Button>
+          )}
+        </div>
+
+        <Button 
+          variant={showActiveOnly ? "default" : "outline"} 
+          size="sm"
+          onClick={() => setShowActiveOnly(!showActiveOnly)}
+          className="whitespace-nowrap"
+        >
+          {showActiveOnly ? "Mostrar todos" : "Mostrar ativos"}
+        </Button>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-        {products.map((product) => (
-          <div 
-            key={product.id}
-            className="card group hover:scale-105 transition-transform duration-200"
-          >
-            <div className="relative aspect-square rounded-lg overflow-hidden mb-4 bg-pastel-pink/10">
-              <img
-                src={product.image}
-                alt={product.name}
-                className="w-full h-full object-cover"
-              />
-              <div className="absolute inset-0 bg-gradient-to-t from-black/20 via-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-200" />
-            </div>
+      <Tabs defaultValue="grid" className="w-full">
+        <TabsList className="mb-4">
+          <TabsTrigger value="grid">Visualização em Cards</TabsTrigger>
+          <TabsTrigger value="table">Visualização em Tabela</TabsTrigger>
+        </TabsList>
+        
+        <TabsContent value="grid" className="w-full">
+          <ProductList 
+            products={filteredProducts || []} 
+            view="grid"
+            onEdit={handleEditProduct}
+            onRefresh={refetch}
+          />
+        </TabsContent>
+        
+        <TabsContent value="table" className="w-full">
+          <ProductList 
+            products={filteredProducts || []} 
+            view="table"
+            onEdit={handleEditProduct}
+            onRefresh={refetch}
+          />
+        </TabsContent>
+      </Tabs>
 
-            <div>
-              <h3 className="font-medium mb-1">{product.name}</h3>
-              <p className="text-sm text-muted-foreground mb-2">{product.category}</p>
-              <div className="flex items-center justify-between">
-                <p className="font-semibold text-lg">
-                  R$ {product.price.toFixed(2)}
-                </p>
-                <span className="px-2 py-1 bg-pastel-blue/20 text-blue-700 text-xs rounded-full">
-                  Ativo
-                </span>
-              </div>
-            </div>
-          </div>
-        ))}
-      </div>
+      <ProductDialog 
+        open={isDialogOpen} 
+        productId={editingProductId}
+        onClose={handleCloseDialog}
+        onSaved={refetch}
+      />
     </div>
   );
 };
