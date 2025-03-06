@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from "react";
 import { PlusCircle, Trash2, Plus, X, Pencil } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
@@ -169,6 +168,28 @@ export function RecipeDialog({ recipeId, trigger, onSave }: RecipeDialogProps) {
     enabled: !!recipeId,
   });
 
+  const { data: ingredientsPerServingData } = useQuery({
+    queryKey: ["ingredients-per-serving", recipeId],
+    queryFn: async () => {
+      if (!recipeId) return null;
+
+      const { data: allIngredients, error } = await supabase
+        .from("recipe_ingredients")
+        .select(`
+          id,
+          amount,
+          ingredient_id,
+          ingredients (id, name, unit, cost_per_unit, package_amount)
+        `)
+        .eq("recipe_id", recipeId);
+
+      if (error) throw error;
+      
+      return [];
+    },
+    enabled: !!recipeId,
+  });
+
   useEffect(() => {
     if (recipeData) {
       setName(recipeData.name);
@@ -185,6 +206,12 @@ export function RecipeDialog({ recipeId, trigger, onSave }: RecipeDialogProps) {
       setRecipeIngredients(recipeIngredientsData);
     }
   }, [recipeIngredientsData]);
+
+  useEffect(() => {
+    if (ingredientsPerServingData) {
+      setIngredientsPerServing(ingredientsPerServingData);
+    }
+  }, [ingredientsPerServingData]);
 
   useEffect(() => {
     const calculatedTotalCost = recipeIngredients.reduce((sum, item) => {
@@ -343,7 +370,6 @@ export function RecipeDialog({ recipeId, trigger, onSave }: RecipeDialogProps) {
       }
 
       if (savedRecipeId) {
-        // Delete existing ingredients
         const { error: deleteError } = await supabase
           .from("recipe_ingredients")
           .delete()
@@ -351,41 +377,42 @@ export function RecipeDialog({ recipeId, trigger, onSave }: RecipeDialogProps) {
 
         if (deleteError) throw deleteError;
 
-        // Add regular ingredients
-        const ingredientPromises = recipeIngredients.map(item => {
+        const ingredientPromises = [];
+        
+        for (const item of recipeIngredients) {
           const ingredient = ingredients?.find(ing => ing.id === item.ingredient_id);
           const ingredientCost = (ingredient?.cost_per_unit || item.cost_per_unit || 0) * item.amount;
           
-          return supabase
-            .from("recipe_ingredients")
-            .insert({
-              recipe_id: savedRecipeId,
-              ingredient_id: item.ingredient_id,
-              amount: item.amount,
-              ingredient_cost: ingredientCost
-            });
-        });
+          ingredientPromises.push(
+            supabase
+              .from("recipe_ingredients")
+              .insert({
+                recipe_id: savedRecipeId,
+                ingredient_id: item.ingredient_id,
+                amount: item.amount,
+                ingredient_cost: ingredientCost
+              })
+          );
+        }
         
-        // Add ingredients per serving as regular ingredients, but with their amount multiplied by servings
-        const servingIngredientPromises = ingredientsPerServing.map(item => {
+        for (const item of ingredientsPerServing) {
           const ingredient = ingredients?.find(ing => ing.id === item.ingredient_id);
-          // Calculate total amount by multiplying per-serving amount by number of servings
           const totalAmount = item.amount * (parseInt(servings) || 1);
           const ingredientCost = (ingredient?.cost_per_unit || 0) * totalAmount;
           
-          return supabase
-            .from("recipe_ingredients")
-            .insert({
-              recipe_id: savedRecipeId,
-              ingredient_id: item.ingredient_id,
-              amount: totalAmount,
-              ingredient_cost: ingredientCost
-            });
-        });
+          ingredientPromises.push(
+            supabase
+              .from("recipe_ingredients")
+              .insert({
+                recipe_id: savedRecipeId,
+                ingredient_id: item.ingredient_id,
+                amount: totalAmount,
+                ingredient_cost: ingredientCost
+              })
+          );
+        }
         
-        // Combine all promises and wait for them to complete
-        const allPromises = [...ingredientPromises, ...servingIngredientPromises];
-        const results = await Promise.all(allPromises);
+        const results = await Promise.all(ingredientPromises);
         
         const errors = results.filter(result => result.error);
         if (errors.length > 0) {
@@ -642,7 +669,7 @@ export function RecipeDialog({ recipeId, trigger, onSave }: RecipeDialogProps) {
                   </div>
                   
                   <div className="w-full sm:w-36">
-                    <Label htmlFor="servingAmount">Quantidade por porção</Label>
+                    <Label htmlFor="servingAmount">Quant. por porção</Label>
                     <Input
                       id="servingAmount"
                       type="number"
@@ -671,7 +698,7 @@ export function RecipeDialog({ recipeId, trigger, onSave }: RecipeDialogProps) {
                       <thead className="bg-muted">
                         <tr>
                           <th className="text-left p-2">Ingrediente</th>
-                          <th className="text-center p-2">Quantidade por porção</th>
+                          <th className="text-center p-2">Quant. por porção</th>
                           <th className="text-right p-2">Ações</th>
                         </tr>
                       </thead>
