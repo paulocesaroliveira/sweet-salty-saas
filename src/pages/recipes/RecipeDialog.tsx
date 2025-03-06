@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from "react";
 import { PlusCircle, Trash2, Plus, X, Pencil } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
@@ -342,7 +341,6 @@ export function RecipeDialog({ recipeId, trigger, onSave }: RecipeDialogProps) {
         savedRecipeId = data.id;
       }
 
-      // First, delete existing recipe ingredients
       if (savedRecipeId) {
         const { error: deleteError } = await supabase
           .from("recipe_ingredients")
@@ -352,30 +350,25 @@ export function RecipeDialog({ recipeId, trigger, onSave }: RecipeDialogProps) {
         if (deleteError) throw deleteError;
       }
 
-      // Then, insert new recipe ingredients one by one to avoid potential issues
-      if (savedRecipeId && recipeIngredients.length > 0) {
-        const promises = recipeIngredients.map(item => {
-          const ingredient = ingredients?.find(ing => ing.id === item.ingredient_id);
-          const ingredientCost = (ingredient?.cost_per_unit || item.cost_per_unit || 0) * item.amount;
-          
-          return supabase
-            .from("recipe_ingredients")
-            .insert({
-              recipe_id: savedRecipeId,
-              ingredient_id: item.ingredient_id,
-              amount: item.amount,
-              ingredient_cost: ingredientCost
-            });
-        });
+      const ingredientPromises = recipeIngredients.map(item => {
+        const ingredient = ingredients?.find(ing => ing.id === item.ingredient_id);
+        const ingredientCost = (ingredient?.cost_per_unit || item.cost_per_unit || 0) * item.amount;
         
-        // Wait for all inserts to complete
-        const results = await Promise.all(promises);
-        
-        // Check for errors
-        const errors = results.filter(result => result.error);
-        if (errors.length > 0) {
-          throw errors[0].error;
-        }
+        return supabase
+          .from("recipe_ingredients")
+          .insert({
+            recipe_id: savedRecipeId,
+            ingredient_id: item.ingredient_id,
+            amount: item.amount,
+            ingredient_cost: ingredientCost
+          });
+      });
+      
+      const results = await Promise.all(ingredientPromises);
+      
+      const errors = results.filter(result => result.error);
+      if (errors.length > 0) {
+        throw errors[0].error;
       }
 
       toast.success(recipeId ? "Receita atualizada com sucesso" : "Receita criada com sucesso");
@@ -508,7 +501,7 @@ export function RecipeDialog({ recipeId, trigger, onSave }: RecipeDialogProps) {
                     <SelectContent>
                       {ingredients.map((ingredient) => (
                         <SelectItem key={ingredient.id} value={ingredient.id}>
-                          {ingredient.name} ({ingredient.unit})
+                          {ingredient.name} ({ingredient.unit}) - {ingredient.package_amount} por embalagem
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -546,6 +539,7 @@ export function RecipeDialog({ recipeId, trigger, onSave }: RecipeDialogProps) {
                       <tr>
                         <th className="text-left p-2">Ingrediente</th>
                         <th className="text-center p-2">Quantidade</th>
+                        <th className="text-center p-2">Pacote</th>
                         <th className="text-center p-2">Custo</th>
                         <th className="text-right p-2">Ações</th>
                       </tr>
@@ -555,6 +549,7 @@ export function RecipeDialog({ recipeId, trigger, onSave }: RecipeDialogProps) {
                         const ingredient = ingredients?.find(ing => ing.id === item.ingredient_id);
                         const name = item.name || ingredient?.name || "Ingrediente";
                         const unit = item.unit || ingredient?.unit || "";
+                        const packageAmount = ingredient?.package_amount || 0;
                         const costPerUnit = item.cost_per_unit || ingredient?.cost_per_unit || 0;
                         const cost = costPerUnit * item.amount;
                         
@@ -562,6 +557,7 @@ export function RecipeDialog({ recipeId, trigger, onSave }: RecipeDialogProps) {
                           <tr key={index} className="border-t">
                             <td className="p-2">{name}</td>
                             <td className="p-2 text-center">{item.amount} {unit}</td>
+                            <td className="p-2 text-center">{packageAmount} {unit}</td>
                             <td className="p-2 text-center">{formatCurrency(cost)}</td>
                             <td className="p-2 text-right">
                               <Button
@@ -616,7 +612,7 @@ export function RecipeDialog({ recipeId, trigger, onSave }: RecipeDialogProps) {
                       <SelectContent>
                         {ingredients.map((ingredient) => (
                           <SelectItem key={ingredient.id} value={ingredient.id}>
-                            {ingredient.name} ({ingredient.unit})
+                            {ingredient.name} ({ingredient.unit}) - {ingredient.package_amount} por embalagem
                           </SelectItem>
                         ))}
                       </SelectContent>

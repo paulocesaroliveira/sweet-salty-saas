@@ -440,38 +440,42 @@ export function ProductDialog({ open, productId, onClose, onSaved }: ProductDial
         productData = data;
       }
       
-      const recipePromises = productRecipes.map(recipe => {
-        return supabase
-          .from("product_recipes")
-          .insert({
-            product_id: productData.id,
-            recipe_id: recipe.recipe_id,
-            quantity: recipe.quantity
-          });
-      });
-      
-      const packagePromises = productPackages.map(pkg => {
-        return supabase
-          .from("product_packages")
-          .insert({
-            product_id: productData.id,
-            package_id: pkg.package_id,
-            quantity: pkg.quantity
-          });
-      });
-      
-      const recipeResults = await Promise.all(recipePromises);
-      const packageResults = await Promise.all(packagePromises);
-      
-      const recipeErrors = recipeResults.filter(result => result.error);
-      const packageErrors = packageResults.filter(result => result.error);
-      
-      if (recipeErrors.length > 0) {
-        throw recipeErrors[0].error;
+      if (productRecipes.length > 0) {
+        const recipePromises = productRecipes.map(recipe => {
+          return supabase
+            .from("product_recipes")
+            .insert({
+              product_id: productData.id,
+              recipe_id: recipe.recipe_id,
+              quantity: recipe.quantity
+            });
+        });
+        
+        const recipeResults = await Promise.all(recipePromises);
+        const recipeErrors = recipeResults.filter(result => result.error);
+        
+        if (recipeErrors.length > 0) {
+          throw recipeErrors[0].error;
+        }
       }
       
-      if (packageErrors.length > 0) {
-        throw packageErrors[0].error;
+      if (productPackages.length > 0) {
+        const packagePromises = productPackages.map(pkg => {
+          return supabase
+            .from("product_packages")
+            .insert({
+              product_id: productData.id,
+              package_id: pkg.package_id,
+              quantity: pkg.quantity
+            });
+        });
+        
+        const packageResults = await Promise.all(packagePromises);
+        const packageErrors = packageResults.filter(result => result.error);
+        
+        if (packageErrors.length > 0) {
+          throw packageErrors[0].error;
+        }
       }
       
       toast.success(productId ? "Produto atualizado com sucesso" : "Produto criado com sucesso");
@@ -597,7 +601,7 @@ export function ProductDialog({ open, productId, onClose, onSaved }: ProductDial
                           <SelectContent>
                             {availableRecipes?.map((recipe) => (
                               <SelectItem key={recipe.id} value={recipe.id}>
-                                {recipe.name}
+                                {recipe.name} - {recipe.servings} unidades - Custo por unidade: {formatCurrency(recipe.cost_per_unit)}
                               </SelectItem>
                             ))}
                           </SelectContent>
@@ -636,6 +640,7 @@ export function ProductDialog({ open, productId, onClose, onSaved }: ProductDial
                       <div className="space-y-2">
                         {productRecipes.map((item) => {
                           const recipe = availableRecipes?.find(r => r.id === item.recipe_id);
+                          const recipeCost = (recipe?.cost_per_unit || 0) * item.quantity;
                           return (
                             <div 
                               key={item.recipe_id} 
@@ -655,7 +660,7 @@ export function ProductDialog({ open, productId, onClose, onSaved }: ProductDial
                               
                               <div className="flex items-center gap-4">
                                 <span className="text-sm text-muted-foreground">
-                                  Custo: {formatCurrency((item.recipe?.total_cost || recipe?.total_cost || 0) * item.quantity)}
+                                  Custo: {formatCurrency(recipeCost)}
                                 </span>
                                 
                                 <Button
