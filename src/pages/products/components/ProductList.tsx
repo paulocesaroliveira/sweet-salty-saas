@@ -1,20 +1,9 @@
 
 import { useState } from "react";
-import { Edit, Trash2, Eye, EyeOff, ExternalLink } from "lucide-react";
+import { Eye, EyeOff, MoreHorizontal, Pencil, Trash } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import { 
-  Card,
-  CardContent
-} from "@/components/ui/card";
+import { type Product } from "../Products";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -26,32 +15,57 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
+  AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import type { Product } from "../Products";
+import {
+  Card,
+  CardContent,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { formatCurrency } from "@/lib/utils";
 
-type ProductListProps = {
+interface ProductListProps {
   products: Product[];
   view: "grid" | "table";
-  onEdit: (productId: string) => void;
+  onEdit: (id: string) => void;
   onRefresh: () => void;
-};
+}
 
 export function ProductList({ products, view, onEdit, onRefresh }: ProductListProps) {
-  const [deleteProductId, setDeleteProductId] = useState<string | null>(null);
-  const [isDeleting, setIsDeleting] = useState(false);
-  const [updatingVisibility, setUpdatingVisibility] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState<string | null>(null);
 
-  const handleDelete = async () => {
-    if (!deleteProductId) return;
-
-    setIsDeleting(true);
+  const handleDelete = async (id: string) => {
+    setDeleting(id);
     try {
-      // Delete from product_recipes and product_packages
-      await supabase.from("product_recipes").delete().eq("product_id", deleteProductId);
-      await supabase.from("product_packages").delete().eq("product_id", deleteProductId);
+      // First delete related records in product_recipes
+      const { error: recipesError } = await supabase
+        .from("product_recipes")
+        .delete()
+        .eq("product_id", id);
       
-      // Delete the product
-      const { error } = await supabase.from("products").delete().eq("id", deleteProductId);
+      if (recipesError) throw recipesError;
+      
+      // Delete related records in product_packages
+      const { error: packagesError } = await supabase
+        .from("product_packages")
+        .delete()
+        .eq("product_id", id);
+      
+      if (packagesError) throw packagesError;
+      
+      // Finally delete the product
+      const { error } = await supabase
+        .from("products")
+        .delete()
+        .eq("id", id);
       
       if (error) throw error;
       
@@ -61,118 +75,93 @@ export function ProductList({ products, view, onEdit, onRefresh }: ProductListPr
       console.error("Error deleting product:", error);
       toast.error("Erro ao excluir produto");
     } finally {
-      setIsDeleting(false);
-      setDeleteProductId(null);
+      setDeleting(null);
     }
   };
 
-  const toggleVisibility = async (productId: string, currentVisibility: boolean) => {
-    setUpdatingVisibility(productId);
+  const handleToggleVisibility = async (product: Product) => {
     try {
       const { error } = await supabase
         .from("products")
-        .update({ visible_in_store: !currentVisibility })
-        .eq("id", productId);
+        .update({ visible_in_store: !product.visible_in_store })
+        .eq("id", product.id);
       
       if (error) throw error;
       
-      toast.success(currentVisibility ? 
-        "Produto ocultado da loja" : 
-        "Produto visível na loja"
+      toast.success(
+        product.visible_in_store
+          ? "Produto ocultado da loja pública"
+          : "Produto visível na loja pública"
       );
       
       onRefresh();
     } catch (error) {
-      console.error("Error updating product visibility:", error);
+      console.error("Error toggling visibility:", error);
       toast.error("Erro ao atualizar visibilidade do produto");
-    } finally {
-      setUpdatingVisibility(null);
     }
   };
 
   if (products.length === 0) {
     return (
-      <div className="text-center py-12 border rounded-lg bg-muted/30">
-        <p className="text-muted-foreground">Nenhum produto encontrado</p>
+      <div className="p-12 text-center border rounded-lg bg-muted/10">
+        <h3 className="text-xl font-semibold mb-2">Nenhum produto encontrado</h3>
+        <p className="text-muted-foreground">
+          Comece criando seu primeiro produto clicando em "Novo Produto"
+        </p>
       </div>
     );
   }
 
   if (view === "grid") {
     return (
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         {products.map((product) => (
-          <Card key={product.id} className="overflow-hidden group hover:shadow-md transition-shadow">
-            <div className="relative aspect-square overflow-hidden bg-muted">
-              {product.image_url ? (
-                <img
-                  src={product.image_url}
-                  alt={product.name}
-                  className="w-full h-full object-cover"
+          <Card key={product.id} className="overflow-hidden">
+            <CardHeader className="pb-2">
+              <div className="flex justify-between items-start">
+                <CardTitle className="text-lg">{product.name}</CardTitle>
+                <ProductActions
+                  product={product}
+                  onDelete={handleDelete}
+                  onEdit={onEdit}
+                  onToggleVisibility={handleToggleVisibility}
                 />
-              ) : (
-                <div className="w-full h-full flex items-center justify-center text-muted-foreground">
-                  Sem imagem
-                </div>
-              )}
-              
-              <div className="absolute inset-x-0 top-0 p-2 flex gap-1 justify-end opacity-0 group-hover:opacity-100 transition-opacity">
-                <Button
-                  size="icon"
-                  variant="secondary"
-                  className="h-8 w-8 bg-background/80 backdrop-blur-sm"
-                  onClick={() => onEdit(product.id)}
-                >
-                  <Edit size={14} />
-                </Button>
-                <Button
-                  size="icon"
-                  variant="secondary"
-                  className="h-8 w-8 bg-background/80 backdrop-blur-sm"
-                  onClick={() => setDeleteProductId(product.id)}
-                >
-                  <Trash2 size={14} />
-                </Button>
               </div>
-            </div>
+            </CardHeader>
             
-            <CardContent className="p-4">
-              <div className="flex justify-between items-start mb-1 gap-2">
-                <h3 className="font-medium line-clamp-1">{product.name}</h3>
-                <Button
-                  size="icon"
-                  variant="ghost"
-                  className="h-6 w-6 shrink-0"
-                  disabled={updatingVisibility === product.id}
-                  onClick={() => toggleVisibility(product.id, product.visible_in_store)}
-                >
-                  {product.visible_in_store ? <Eye size={14} /> : <EyeOff size={14} />}
-                </Button>
-              </div>
-              
-              <div className="flex items-center gap-2 mb-2">
-                {product.category && (
-                  <Badge variant="outline" className="text-xs">
-                    {product.category}
-                  </Badge>
-                )}
-              </div>
-              
-              <div className="text-sm text-muted-foreground line-clamp-2 min-h-[2.5rem] mb-2">
-                {product.description || "Sem descrição"}
-              </div>
-              
-              <div className="mt-auto pt-2 border-t flex justify-between items-center">
+            <CardContent className="py-2">
+              <div className="flex items-center justify-between mb-4">
                 <div>
-                  <p className="text-xs text-muted-foreground">Custo: R$ {product.cost.toFixed(2)}</p>
-                  <p className="font-medium">R$ {product.price.toFixed(2)}</p>
+                  <div className="text-sm text-muted-foreground mb-1">Preço</div>
+                  <div className="text-lg font-semibold">{formatCurrency(product.price)}</div>
                 </div>
-                
+                <div>
+                  <div className="text-sm text-muted-foreground mb-1">Custo</div>
+                  <div className="text-lg font-semibold">{formatCurrency(product.cost)}</div>
+                </div>
+              </div>
+              
+              <div className="flex flex-wrap gap-2">
+                {product.category && (
+                  <Badge variant="outline">{product.category}</Badge>
+                )}
                 <Badge variant={product.visible_in_store ? "default" : "secondary"}>
-                  {product.visible_in_store ? "Visível" : "Oculto"}
+                  {product.visible_in_store ? "Visível na loja" : "Oculto"}
                 </Badge>
               </div>
             </CardContent>
+            
+            <CardFooter className="bg-muted/20 flex justify-between pt-3">
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                onClick={() => onEdit(product.id)}
+                className="px-2 flex-1"
+              >
+                <Pencil size={16} className="mr-2" />
+                Editar
+              </Button>
+            </CardFooter>
           </Card>
         ))}
       </div>
@@ -180,124 +169,117 @@ export function ProductList({ products, view, onEdit, onRefresh }: ProductListPr
   }
 
   return (
-    <div className="border rounded-lg overflow-hidden">
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead>Produto</TableHead>
-            <TableHead>Categoria</TableHead>
-            <TableHead>Custo</TableHead>
-            <TableHead>Preço</TableHead>
-            <TableHead>Visibilidade</TableHead>
-            <TableHead className="text-right">Ações</TableHead>
-          </TableRow>
-        </TableHeader>
-        
-        <TableBody>
+    <div className="border rounded-md overflow-hidden">
+      <table className="w-full">
+        <thead className="bg-muted">
+          <tr>
+            <th className="text-left p-3 font-medium">Nome</th>
+            <th className="text-center p-3 font-medium">Categoria</th>
+            <th className="text-center p-3 font-medium">Preço</th>
+            <th className="text-center p-3 font-medium">Custo</th>
+            <th className="text-center p-3 font-medium">Margem</th>
+            <th className="text-center p-3 font-medium">Visível</th>
+            <th className="text-right p-3 font-medium">Ações</th>
+          </tr>
+        </thead>
+        <tbody>
           {products.map((product) => (
-            <TableRow key={product.id}>
-              <TableCell>
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded overflow-hidden bg-muted flex-shrink-0">
-                    {product.image_url ? (
-                      <img
-                        src={product.image_url}
-                        alt={product.name}
-                        className="w-full h-full object-cover"
-                      />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center text-muted-foreground text-xs">
-                        Sem img
-                      </div>
-                    )}
-                  </div>
-                  <div>
-                    <div className="font-medium">{product.name}</div>
-                    <div className="text-xs text-muted-foreground line-clamp-1 max-w-56">
-                      {product.description || "Sem descrição"}
-                    </div>
-                  </div>
-                </div>
-              </TableCell>
-              
-              <TableCell>
+            <tr key={product.id} className="border-t hover:bg-muted/20">
+              <td className="p-3">{product.name}</td>
+              <td className="p-3 text-center">
                 {product.category ? (
                   <Badge variant="outline">{product.category}</Badge>
                 ) : (
-                  <span className="text-muted-foreground text-sm">-</span>
+                  <span className="text-muted-foreground">-</span>
                 )}
-              </TableCell>
-              
-              <TableCell>R$ {product.cost.toFixed(2)}</TableCell>
-              <TableCell>R$ {product.price.toFixed(2)}</TableCell>
-              
-              <TableCell>
-                <Button
-                  size="sm"
-                  variant={product.visible_in_store ? "default" : "secondary"}
-                  className="gap-1 text-xs h-7"
-                  disabled={updatingVisibility === product.id}
-                  onClick={() => toggleVisibility(product.id, product.visible_in_store)}
-                >
-                  {product.visible_in_store ? (
-                    <>
-                      <Eye size={12} />
-                      <span>Visível</span>
-                    </>
-                  ) : (
-                    <>
-                      <EyeOff size={12} />
-                      <span>Oculto</span>
-                    </>
-                  )}
-                </Button>
-              </TableCell>
-              
-              <TableCell className="text-right">
-                <div className="flex justify-end gap-2">
-                  <Button
-                    size="icon"
-                    variant="ghost"
-                    className="h-8 w-8"
-                    onClick={() => onEdit(product.id)}
-                  >
-                    <Edit size={14} />
-                  </Button>
-                  <Button
-                    size="icon"
-                    variant="ghost"
-                    className="h-8 w-8 text-destructive hover:text-destructive"
-                    onClick={() => setDeleteProductId(product.id)}
-                  >
-                    <Trash2 size={14} />
-                  </Button>
-                </div>
-              </TableCell>
-            </TableRow>
+              </td>
+              <td className="p-3 text-center font-medium">{formatCurrency(product.price)}</td>
+              <td className="p-3 text-center">{formatCurrency(product.cost)}</td>
+              <td className="p-3 text-center">
+                {product.profit_margin.toFixed(0)}%
+              </td>
+              <td className="p-3 text-center">
+                <Badge variant={product.visible_in_store ? "success" : "secondary"}>
+                  {product.visible_in_store ? "Sim" : "Não"}
+                </Badge>
+              </td>
+              <td className="p-3 text-right">
+                <ProductActions
+                  product={product}
+                  onDelete={handleDelete}
+                  onEdit={onEdit}
+                  onToggleVisibility={handleToggleVisibility}
+                />
+              </td>
+            </tr>
           ))}
-        </TableBody>
-      </Table>
-      
-      <AlertDialog open={!!deleteProductId} onOpenChange={() => setDeleteProductId(null)}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Excluir produto</AlertDialogTitle>
-            <AlertDialogDescription>
-              Esta ação não pode ser desfeita. O produto será permanentemente excluído.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={isDeleting}>Cancelar</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={handleDelete}
-              disabled={isDeleting}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-            >
-              {isDeleting ? "Excluindo..." : "Excluir"}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+        </tbody>
+      </table>
     </div>
+  );
+}
+
+interface ProductActionsProps {
+  product: Product;
+  onDelete: (id: string) => void;
+  onEdit: (id: string) => void;
+  onToggleVisibility: (product: Product) => void;
+}
+
+function ProductActions({ product, onDelete, onEdit, onToggleVisibility }: ProductActionsProps) {
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button variant="ghost" size="icon">
+          <MoreHorizontal size={16} />
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end">
+        <DropdownMenuItem onClick={() => onEdit(product.id)}>
+          <Pencil className="mr-2" size={14} />
+          Editar
+        </DropdownMenuItem>
+        
+        <DropdownMenuItem onClick={() => onToggleVisibility(product)}>
+          {product.visible_in_store ? (
+            <>
+              <EyeOff className="mr-2" size={14} />
+              Ocultar da loja
+            </>
+          ) : (
+            <>
+              <Eye className="mr-2" size={14} />
+              Mostrar na loja
+            </>
+          )}
+        </DropdownMenuItem>
+        
+        <AlertDialog>
+          <AlertDialogTrigger asChild>
+            <DropdownMenuItem className="text-destructive focus:text-destructive" onSelect={(e) => e.preventDefault()}>
+              <Trash className="mr-2" size={14} />
+              Excluir
+            </DropdownMenuItem>
+          </AlertDialogTrigger>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Excluir produto</AlertDialogTitle>
+              <AlertDialogDescription>
+                Tem certeza que deseja excluir "{product.name}"? Esta ação não pode ser desfeita.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancelar</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={() => onDelete(product.id)}
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              >
+                Excluir
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }

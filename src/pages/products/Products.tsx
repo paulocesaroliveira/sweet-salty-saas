@@ -10,7 +10,14 @@ import { Badge } from "@/components/ui/badge";
 import { ProductList } from "./components/ProductList";
 import { ProductDialog } from "./components/ProductDialog";
 import { useAuth } from "@/contexts/AuthContext";
-import { Combobox } from "@/components/ui/combobox";
+import { formatCurrency } from "@/lib/utils";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 export type Product = {
   id: string;
@@ -123,15 +130,17 @@ const Products = () => {
         <div className="flex gap-2 items-center">
           <Filter size={16} className="text-muted-foreground" />
           {categories && categories.length > 0 ? (
-            <Combobox
-              options={[
-                { value: "all", label: "Todas categorias" },
-                ...categories.map(cat => ({ value: cat, label: cat }))
-              ]}
-              value={selectedCategory}
-              onChange={setSelectedCategory}
-              className="w-[200px]"
-            />
+            <Select value={selectedCategory} onValueChange={setSelectedCategory}>
+              <SelectTrigger className="w-[200px]">
+                <SelectValue placeholder="Todas categorias" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todas categorias</SelectItem>
+                {categories.map(cat => (
+                  <SelectItem key={cat} value={cat}>{cat}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           ) : (
             <Button variant="outline" size="sm" disabled>
               Sem categorias

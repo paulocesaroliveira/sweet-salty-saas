@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from "react";
 import { PlusCircle, Trash2, Plus, X, Pencil } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
@@ -34,7 +35,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { Combobox, ComboboxOption } from "@/components/ui/combobox";
+import { formatCurrency } from "@/lib/utils";
 
 type Recipe = {
   id: string;
@@ -341,31 +342,33 @@ export function RecipeDialog({ recipeId, trigger, onSave }: RecipeDialogProps) {
         savedRecipeId = data.id;
       }
 
+      // First, delete existing recipe ingredients
       if (savedRecipeId) {
-        const { error } = await supabase
+        const { error: deleteError } = await supabase
           .from("recipe_ingredients")
           .delete()
           .eq("recipe_id", savedRecipeId);
 
-        if (error) throw error;
+        if (deleteError) throw deleteError;
       }
 
+      // Then, insert new recipe ingredients one by one to avoid potential issues
       if (savedRecipeId && recipeIngredients.length > 0) {
-        const ingredientsToInsert = recipeIngredients.map(item => {
+        for (const item of recipeIngredients) {
           const ingredient = ingredients?.find(ing => ing.id === item.ingredient_id);
-          return {
-            recipe_id: savedRecipeId,
-            ingredient_id: item.ingredient_id,
-            amount: item.amount,
-            ingredient_cost: (ingredient?.cost_per_unit || item.cost_per_unit || 0) * item.amount
-          };
-        });
-
-        const { error } = await supabase
-          .from("recipe_ingredients")
-          .insert(ingredientsToInsert);
-
-        if (error) throw error;
+          const ingredientCost = (ingredient?.cost_per_unit || item.cost_per_unit || 0) * item.amount;
+          
+          const { error: insertError } = await supabase
+            .from("recipe_ingredients")
+            .insert({
+              recipe_id: savedRecipeId,
+              ingredient_id: item.ingredient_id,
+              amount: item.amount,
+              ingredient_cost: ingredientCost
+            });
+          
+          if (insertError) throw insertError;
+        }
       }
 
       toast.success(recipeId ? "Receita atualizada com sucesso" : "Receita criada com sucesso");
@@ -373,8 +376,8 @@ export function RecipeDialog({ recipeId, trigger, onSave }: RecipeDialogProps) {
       setOpen(false);
       resetForm();
     } catch (error) {
+      console.error("Error submitting recipe:", error);
       toast.error(recipeId ? "Erro ao atualizar receita" : "Erro ao criar receita");
-      console.error(error);
     } finally {
       setIsLoading(false);
     }
@@ -425,15 +428,6 @@ export function RecipeDialog({ recipeId, trigger, onSave }: RecipeDialogProps) {
     setSelectedServingIngredientId("");
     setSelectedServingAmount("0");
   };
-
-  const ingredientOptions: ComboboxOption[] = ingredients
-    ? ingredients.map(ingredient => ({
-        value: ingredient.id,
-        label: ingredient.name,
-        unit: ingredient.unit,
-        package_amount: ingredient.package_amount
-      }))
-    : [];
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -500,13 +494,18 @@ export function RecipeDialog({ recipeId, trigger, onSave }: RecipeDialogProps) {
               <div className="flex flex-col sm:flex-row gap-4">
                 <div className="flex-1">
                   <Label htmlFor="ingredient">Ingrediente</Label>
-                  <Combobox
-                    options={ingredientOptions}
-                    value={selectedIngredientId}
-                    onChange={setSelectedIngredientId}
-                    placeholder="Selecione um ingrediente"
-                    emptyMessage="Nenhum ingrediente encontrado"
-                  />
+                  <Select value={selectedIngredientId} onValueChange={setSelectedIngredientId}>
+                    <SelectTrigger id="ingredient">
+                      <SelectValue placeholder="Selecione um ingrediente" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {ingredients.map((ingredient) => (
+                        <SelectItem key={ingredient.id} value={ingredient.id}>
+                          {ingredient.name} ({ingredient.unit})
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
                 
                 <div className="w-full sm:w-36">
@@ -556,7 +555,7 @@ export function RecipeDialog({ recipeId, trigger, onSave }: RecipeDialogProps) {
                           <tr key={index} className="border-t">
                             <td className="p-2">{name}</td>
                             <td className="p-2 text-center">{item.amount} {unit}</td>
-                            <td className="p-2 text-center">R$ {cost.toFixed(2)}</td>
+                            <td className="p-2 text-center">{formatCurrency(cost)}</td>
                             <td className="p-2 text-right">
                               <Button
                                 type="button"
@@ -600,13 +599,21 @@ export function RecipeDialog({ recipeId, trigger, onSave }: RecipeDialogProps) {
                 <div className="flex flex-col sm:flex-row gap-4">
                   <div className="flex-1">
                     <Label htmlFor="servingIngredient">Ingrediente</Label>
-                    <Combobox
-                      options={ingredientOptions}
-                      value={selectedServingIngredientId}
-                      onChange={setSelectedServingIngredientId}
-                      placeholder="Selecione um ingrediente"
-                      emptyMessage="Nenhum ingrediente encontrado"
-                    />
+                    <Select 
+                      value={selectedServingIngredientId} 
+                      onValueChange={setSelectedServingIngredientId}
+                    >
+                      <SelectTrigger id="servingIngredient">
+                        <SelectValue placeholder="Selecione um ingrediente" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {ingredients.map((ingredient) => (
+                          <SelectItem key={ingredient.id} value={ingredient.id}>
+                            {ingredient.name} ({ingredient.unit})
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
                   
                   <div className="w-full sm:w-36">
@@ -682,11 +689,11 @@ export function RecipeDialog({ recipeId, trigger, onSave }: RecipeDialogProps) {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <p className="text-sm text-muted-foreground">Custo total dos ingredientes</p>
-                  <p className="text-lg font-semibold">R$ {totalCost.toFixed(2)}</p>
+                  <p className="text-lg font-semibold">{formatCurrency(totalCost)}</p>
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground">Custo por porção/unidade</p>
-                  <p className="text-lg font-semibold">R$ {costPerUnit.toFixed(2)}</p>
+                  <p className="text-lg font-semibold">{formatCurrency(costPerUnit)}</p>
                 </div>
               </div>
             </div>

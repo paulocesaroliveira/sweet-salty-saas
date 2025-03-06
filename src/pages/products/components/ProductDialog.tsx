@@ -11,6 +11,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -18,7 +19,13 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
-import { Combobox } from "@/components/ui/combobox";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   Card,
   CardContent,
@@ -27,8 +34,8 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ComboboxOption } from "@/components/ui/combobox";
 import { Badge } from "@/components/ui/badge";
+import { formatCurrency } from "@/lib/utils";
 
 type ProductDialogProps = {
   open: boolean;
@@ -45,6 +52,7 @@ type ProductRecipe = {
     name: string;
     total_cost: number;
     unit?: string;
+    category?: string | null;
   };
 };
 
@@ -55,6 +63,7 @@ type ProductPackage = {
   package?: {
     name: string;
     unit_cost: number;
+    type?: string | null;
   };
 };
 
@@ -83,6 +92,8 @@ export function ProductDialog({ open, productId, onClose, onSaved }: ProductDial
   const [profitMargin, setProfitMargin] = useState(30);
   const [price, setPrice] = useState(0);
   const [totalCost, setTotalCost] = useState(0);
+  const [isUserEditingPrice, setIsUserEditingPrice] = useState(false);
+  const [isUserEditingMargin, setIsUserEditingMargin] = useState(false);
   
   // Fetch product data if editing
   const { data: product, isLoading: isLoadingProduct } = useQuery({
@@ -116,7 +127,8 @@ export function ProductDialog({ open, productId, onClose, onSaved }: ProductDial
           quantity,
           recipes:recipe_id (
             name,
-            total_cost
+            total_cost,
+            category
           )
         `)
         .eq("product_id", productId);
@@ -130,6 +142,7 @@ export function ProductDialog({ open, productId, onClose, onSaved }: ProductDial
         recipe: {
           name: item.recipes.name,
           total_cost: item.recipes.total_cost,
+          category: item.recipes.category
         }
       }));
     },
@@ -150,7 +163,8 @@ export function ProductDialog({ open, productId, onClose, onSaved }: ProductDial
           quantity,
           packages:package_id (
             name,
-            unit_cost
+            unit_cost,
+            type
           )
         `)
         .eq("product_id", productId);
@@ -164,6 +178,7 @@ export function ProductDialog({ open, productId, onClose, onSaved }: ProductDial
         package: {
           name: item.packages.name,
           unit_cost: item.packages.unit_cost,
+          type: item.packages.type
         }
       }));
     },
@@ -230,7 +245,23 @@ export function ProductDialog({ open, productId, onClose, onSaved }: ProductDial
   // Calculate total cost and suggested price whenever recipes or packages change
   useEffect(() => {
     calculateCosts();
-  }, [productRecipes, productPackages, profitMargin]);
+  }, [productRecipes, productPackages]);
+  
+  // Update price when profit margin changes (only if user is editing margin)
+  useEffect(() => {
+    if (isUserEditingMargin && !isUserEditingPrice) {
+      const newPrice = totalCost + (totalCost * profitMargin / 100);
+      setPrice(newPrice);
+    }
+  }, [profitMargin, totalCost, isUserEditingMargin]);
+  
+  // Update profit margin when price changes (only if user is editing price)
+  useEffect(() => {
+    if (isUserEditingPrice && !isUserEditingMargin && totalCost > 0) {
+      const newMargin = ((price - totalCost) / totalCost) * 100;
+      setProfitMargin(newMargin >= 0 ? newMargin : 0);
+    }
+  }, [price, totalCost, isUserEditingPrice]);
   
   const resetForm = () => {
     setName("");
@@ -272,9 +303,11 @@ export function ProductDialog({ open, productId, onClose, onSaved }: ProductDial
     const newTotalCost = recipesCost + packagesCost;
     setTotalCost(newTotalCost);
     
-    // Calculate suggested price
-    const suggestedPrice = newTotalCost + (newTotalCost * profitMargin / 100);
-    setPrice(suggestedPrice);
+    // Only update price if the user is not currently editing it
+    if (!isUserEditingPrice) {
+      const suggestedPrice = newTotalCost + (newTotalCost * profitMargin / 100);
+      setPrice(suggestedPrice);
+    }
   };
   
   const handleAddRecipe = () => {
@@ -297,6 +330,7 @@ export function ProductDialog({ open, productId, onClose, onSaved }: ProductDial
           recipe: {
             name: recipe.name,
             total_cost: recipe.total_cost,
+            category: recipe.category
           }
         }
       ]);
@@ -330,6 +364,7 @@ export function ProductDialog({ open, productId, onClose, onSaved }: ProductDial
           package: {
             name: pkg.name,
             unit_cost: pkg.unit_cost,
+            type: pkg.type
           }
         }
       ]);
@@ -341,6 +376,20 @@ export function ProductDialog({ open, productId, onClose, onSaved }: ProductDial
   
   const handleRemovePackage = (packageId: string) => {
     setProductPackages(productPackages.filter(item => item.package_id !== packageId));
+  };
+  
+  const handleProfitMarginChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setIsUserEditingMargin(true);
+    setIsUserEditingPrice(false);
+    setProfitMargin(parseFloat(e.target.value) || 0);
+    // Price will be updated by the useEffect
+  };
+  
+  const handlePriceChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setIsUserEditingPrice(true);
+    setIsUserEditingMargin(false);
+    setPrice(parseFloat(e.target.value) || 0);
+    // Margin will be updated by the useEffect
   };
   
   const handleSubmit = async () => {
@@ -382,16 +431,20 @@ export function ProductDialog({ open, productId, onClose, onSaved }: ProductDial
         productData = data;
         
         // Delete existing product recipes
-        await supabase
+        const { error: deleteRecipesError } = await supabase
           .from("product_recipes")
           .delete()
           .eq("product_id", productId);
         
+        if (deleteRecipesError) throw deleteRecipesError;
+        
         // Delete existing product packages
-        await supabase
+        const { error: deletePackagesError } = await supabase
           .from("product_packages")
           .delete()
           .eq("product_id", productId);
+        
+        if (deletePackagesError) throw deletePackagesError;
       } else {
         // Create new product
         const { data, error } = await supabase
@@ -414,34 +467,34 @@ export function ProductDialog({ open, productId, onClose, onSaved }: ProductDial
         productData = data;
       }
       
-      // Insert product recipes
+      // Insert product recipes one by one to avoid batch errors
       if (productRecipes.length > 0) {
-        const { error: recipesError } = await supabase
-          .from("product_recipes")
-          .insert(
-            productRecipes.map(item => ({
+        for (const recipe of productRecipes) {
+          const { error: recipeError } = await supabase
+            .from("product_recipes")
+            .insert({
               product_id: productData.id,
-              recipe_id: item.recipe_id,
-              quantity: item.quantity,
-            }))
-          );
-        
-        if (recipesError) throw recipesError;
+              recipe_id: recipe.recipe_id,
+              quantity: recipe.quantity
+            });
+          
+          if (recipeError) throw recipeError;
+        }
       }
       
-      // Insert product packages
+      // Insert product packages one by one to avoid batch errors
       if (productPackages.length > 0) {
-        const { error: packagesError } = await supabase
-          .from("product_packages")
-          .insert(
-            productPackages.map(item => ({
+        for (const pkg of productPackages) {
+          const { error: packageError } = await supabase
+            .from("product_packages")
+            .insert({
               product_id: productData.id,
-              package_id: item.package_id,
-              quantity: item.quantity,
-            }))
-          );
-        
-        if (packagesError) throw packagesError;
+              package_id: pkg.package_id,
+              quantity: pkg.quantity
+            });
+          
+          if (packageError) throw packageError;
+        }
       }
       
       toast.success(productId ? "Produto atualizado com sucesso" : "Produto criado com sucesso");
@@ -455,17 +508,6 @@ export function ProductDialog({ open, productId, onClose, onSaved }: ProductDial
     }
   };
   
-  // Format recipes and packages for combobox
-  const recipeOptions: ComboboxOption[] = availableRecipes?.map(recipe => ({
-    value: recipe.id,
-    label: recipe.name,
-  })) || [];
-  
-  const packageOptions: ComboboxOption[] = availablePackages?.map(pkg => ({
-    value: pkg.id,
-    label: pkg.name,
-  })) || [];
-  
   return (
     <Dialog open={open} onOpenChange={onClose}>
       <DialogContent className="max-w-4xl h-[90vh] flex flex-col">
@@ -473,6 +515,9 @@ export function ProductDialog({ open, productId, onClose, onSaved }: ProductDial
           <DialogTitle>
             {productId ? "Editar Produto" : "Novo Produto"}
           </DialogTitle>
+          <DialogDescription>
+            Preencha os dados do produto para cadastrá-lo no sistema.
+          </DialogDescription>
         </DialogHeader>
         
         <div className="flex-grow overflow-y-auto pr-2">
@@ -568,12 +613,18 @@ export function ProductDialog({ open, productId, onClose, onSaved }: ProductDial
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                       <div className="space-y-2 md:col-span-2">
                         <Label htmlFor="recipe">Receita</Label>
-                        <Combobox
-                          options={recipeOptions}
-                          value={selectedRecipeId}
-                          onChange={setSelectedRecipeId}
-                          placeholder="Selecione uma receita"
-                        />
+                        <Select value={selectedRecipeId} onValueChange={setSelectedRecipeId}>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Selecione uma receita" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {availableRecipes?.map((recipe) => (
+                              <SelectItem key={recipe.id} value={recipe.id}>
+                                {recipe.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
                       </div>
                       
                       <div className="space-y-2">
@@ -618,16 +669,16 @@ export function ProductDialog({ open, productId, onClose, onSaved }: ProductDial
                                   {item.quantity}
                                 </Badge>
                                 <span>{item.recipe?.name || recipe?.name || "Receita"}</span>
-                                {recipe?.category && (
+                                {(recipe?.category || item.recipe?.category) && (
                                   <Badge variant="secondary" className="text-xs">
-                                    {recipe.category}
+                                    {recipe?.category || item.recipe?.category || ""}
                                   </Badge>
                                 )}
                               </div>
                               
                               <div className="flex items-center gap-4">
                                 <span className="text-sm text-muted-foreground">
-                                  Custo: R$ {((item.recipe?.total_cost || recipe?.total_cost || 0) * item.quantity).toFixed(2)}
+                                  Custo: {formatCurrency((item.recipe?.total_cost || recipe?.total_cost || 0) * item.quantity)}
                                 </span>
                                 
                                 <Button
@@ -656,12 +707,18 @@ export function ProductDialog({ open, productId, onClose, onSaved }: ProductDial
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                       <div className="space-y-2 md:col-span-2">
                         <Label htmlFor="package">Embalagem</Label>
-                        <Combobox
-                          options={packageOptions}
-                          value={selectedPackageId}
-                          onChange={setSelectedPackageId}
-                          placeholder="Selecione uma embalagem"
-                        />
+                        <Select value={selectedPackageId} onValueChange={setSelectedPackageId}>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Selecione uma embalagem" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {availablePackages?.map((pkg) => (
+                              <SelectItem key={pkg.id} value={pkg.id}>
+                                {pkg.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
                       </div>
                       
                       <div className="space-y-2">
@@ -706,16 +763,16 @@ export function ProductDialog({ open, productId, onClose, onSaved }: ProductDial
                                   {item.quantity}
                                 </Badge>
                                 <span>{item.package?.name || pkg?.name || "Embalagem"}</span>
-                                {pkg?.type && (
+                                {(pkg?.type || item.package?.type) && (
                                   <Badge variant="secondary" className="text-xs">
-                                    {pkg.type}
+                                    {pkg?.type || item.package?.type || ""}
                                   </Badge>
                                 )}
                               </div>
                               
                               <div className="flex items-center gap-4">
                                 <span className="text-sm text-muted-foreground">
-                                  Custo: R$ {((item.package?.unit_cost || pkg?.unit_cost || 0) * item.quantity).toFixed(2)}
+                                  Custo: {formatCurrency((item.package?.unit_cost || pkg?.unit_cost || 0) * item.quantity)}
                                 </span>
                                 
                                 <Button
@@ -748,20 +805,20 @@ export function ProductDialog({ open, productId, onClose, onSaved }: ProductDial
                     <div className="flex justify-between items-center text-sm">
                       <span className="text-muted-foreground">Custo das Receitas:</span>
                       <span>
-                        R$ {productRecipes.reduce((total, item) => {
+                        {formatCurrency(productRecipes.reduce((total, item) => {
                           const recipe = availableRecipes?.find(r => r.id === item.recipe_id);
                           return total + ((recipe?.total_cost || 0) * item.quantity);
-                        }, 0).toFixed(2)}
+                        }, 0))}
                       </span>
                     </div>
                     
                     <div className="flex justify-between items-center text-sm">
                       <span className="text-muted-foreground">Custo das Embalagens:</span>
                       <span>
-                        R$ {productPackages.reduce((total, item) => {
+                        {formatCurrency(productPackages.reduce((total, item) => {
                           const pkg = availablePackages?.find(p => p.id === item.package_id);
                           return total + ((pkg?.unit_cost || 0) * item.quantity);
-                        }, 0).toFixed(2)}
+                        }, 0))}
                       </span>
                     </div>
                     
@@ -770,7 +827,7 @@ export function ProductDialog({ open, productId, onClose, onSaved }: ProductDial
                     <div className="flex justify-between items-center font-medium">
                       <span>Custo Total do Produto:</span>
                       <span>
-                        R$ {totalCost.toFixed(2)}
+                        {formatCurrency(totalCost)}
                       </span>
                     </div>
                   </div>
@@ -791,8 +848,12 @@ export function ProductDialog({ open, productId, onClose, onSaved }: ProductDial
                         type="number"
                         min="0"
                         max="1000"
-                        value={profitMargin}
-                        onChange={(e) => setProfitMargin(parseInt(e.target.value) || 0)}
+                        value={profitMargin.toFixed(2)}
+                        onChange={handleProfitMarginChange}
+                        onFocus={() => {
+                          setIsUserEditingMargin(true);
+                          setIsUserEditingPrice(false);
+                        }}
                       />
                       <span className="text-xl">%</span>
                     </div>
@@ -805,8 +866,12 @@ export function ProductDialog({ open, productId, onClose, onSaved }: ProductDial
                       type="number"
                       min="0"
                       step="0.01"
-                      value={price}
-                      onChange={(e) => setPrice(parseFloat(e.target.value) || 0)}
+                      value={price.toFixed(2)}
+                      onChange={handlePriceChange}
+                      onFocus={() => {
+                        setIsUserEditingPrice(true);
+                        setIsUserEditingMargin(false);
+                      }}
                     />
                   </div>
                   
@@ -814,7 +879,7 @@ export function ProductDialog({ open, productId, onClose, onSaved }: ProductDial
                     <div className="flex justify-between items-center font-medium">
                       <span>Lucro por Unidade:</span>
                       <span className={price > totalCost ? "text-green-600" : "text-destructive"}>
-                        R$ {(price - totalCost).toFixed(2)}
+                        {formatCurrency(price - totalCost)}
                       </span>
                     </div>
                     
@@ -822,7 +887,7 @@ export function ProductDialog({ open, productId, onClose, onSaved }: ProductDial
                       <div className="flex justify-between items-center text-sm mt-1">
                         <span className="text-muted-foreground">Margem Efetiva:</span>
                         <span className={price > totalCost ? "text-green-600" : "text-destructive"}>
-                          {totalCost > 0 ? (((price - totalCost) / totalCost) * 100).toFixed(1) : 0}%
+                          {totalCost > 0 ? `${((price - totalCost) / totalCost * 100).toFixed(1)}%` : "0%"}
                         </span>
                       </div>
                     )}
