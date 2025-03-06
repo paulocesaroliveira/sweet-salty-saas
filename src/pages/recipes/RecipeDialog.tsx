@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from "react";
 import { PlusCircle, Trash2, Plus, X, Pencil } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
@@ -151,7 +152,7 @@ export function RecipeDialog({ recipeId, trigger, onSave }: RecipeDialogProps) {
           id,
           amount,
           ingredient_id,
-          ingredients (id, name, unit, cost_per_unit)
+          ingredients (id, name, unit, cost_per_unit, package_amount)
         `)
         .eq("recipe_id", recipeId);
 
@@ -342,33 +343,54 @@ export function RecipeDialog({ recipeId, trigger, onSave }: RecipeDialogProps) {
       }
 
       if (savedRecipeId) {
+        // Delete existing ingredients
         const { error: deleteError } = await supabase
           .from("recipe_ingredients")
           .delete()
           .eq("recipe_id", savedRecipeId);
 
         if (deleteError) throw deleteError;
-      }
 
-      const ingredientPromises = recipeIngredients.map(item => {
-        const ingredient = ingredients?.find(ing => ing.id === item.ingredient_id);
-        const ingredientCost = (ingredient?.cost_per_unit || item.cost_per_unit || 0) * item.amount;
+        // Add regular ingredients
+        const ingredientPromises = recipeIngredients.map(item => {
+          const ingredient = ingredients?.find(ing => ing.id === item.ingredient_id);
+          const ingredientCost = (ingredient?.cost_per_unit || item.cost_per_unit || 0) * item.amount;
+          
+          return supabase
+            .from("recipe_ingredients")
+            .insert({
+              recipe_id: savedRecipeId,
+              ingredient_id: item.ingredient_id,
+              amount: item.amount,
+              ingredient_cost: ingredientCost
+            });
+        });
         
-        return supabase
-          .from("recipe_ingredients")
-          .insert({
-            recipe_id: savedRecipeId,
-            ingredient_id: item.ingredient_id,
-            amount: item.amount,
-            ingredient_cost: ingredientCost
-          });
-      });
-      
-      const results = await Promise.all(ingredientPromises);
-      
-      const errors = results.filter(result => result.error);
-      if (errors.length > 0) {
-        throw errors[0].error;
+        // Add ingredients per serving as regular ingredients, but with their amount multiplied by servings
+        const servingIngredientPromises = ingredientsPerServing.map(item => {
+          const ingredient = ingredients?.find(ing => ing.id === item.ingredient_id);
+          // Calculate total amount by multiplying per-serving amount by number of servings
+          const totalAmount = item.amount * (parseInt(servings) || 1);
+          const ingredientCost = (ingredient?.cost_per_unit || 0) * totalAmount;
+          
+          return supabase
+            .from("recipe_ingredients")
+            .insert({
+              recipe_id: savedRecipeId,
+              ingredient_id: item.ingredient_id,
+              amount: totalAmount,
+              ingredient_cost: ingredientCost
+            });
+        });
+        
+        // Combine all promises and wait for them to complete
+        const allPromises = [...ingredientPromises, ...servingIngredientPromises];
+        const results = await Promise.all(allPromises);
+        
+        const errors = results.filter(result => result.error);
+        if (errors.length > 0) {
+          throw errors[0].error;
+        }
       }
 
       toast.success(recipeId ? "Receita atualizada com sucesso" : "Receita criada com sucesso");

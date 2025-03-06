@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { ChevronRight, Plus, Trash, ImageIcon, X } from "lucide-react";
@@ -50,6 +51,7 @@ type ProductRecipe = {
   recipe?: {
     name: string;
     total_cost: number;
+    cost_per_unit: number;
     unit?: string;
     category?: string | null;
   };
@@ -121,6 +123,7 @@ export function ProductDialog({ open, productId, onClose, onSaved }: ProductDial
           recipes:recipe_id (
             name,
             total_cost,
+            cost_per_unit,
             category
           )
         `)
@@ -135,6 +138,7 @@ export function ProductDialog({ open, productId, onClose, onSaved }: ProductDial
         recipe: {
           name: item.recipes.name,
           total_cost: item.recipes.total_cost,
+          cost_per_unit: item.recipes.cost_per_unit,
           category: item.recipes.category
         }
       }));
@@ -268,6 +272,7 @@ export function ProductDialog({ open, productId, onClose, onSaved }: ProductDial
     const recipesCost = productRecipes.reduce((total, item) => {
       const recipe = availableRecipes?.find(r => r.id === item.recipe_id);
       if (recipe) {
+        // Use cost_per_unit instead of total_cost for the calculation
         return total + (recipe.cost_per_unit * item.quantity);
       }
       return total;
@@ -310,6 +315,7 @@ export function ProductDialog({ open, productId, onClose, onSaved }: ProductDial
           recipe: {
             name: recipe.name,
             total_cost: recipe.total_cost,
+            cost_per_unit: recipe.cost_per_unit,
             category: recipe.category
           }
         }
@@ -640,6 +646,7 @@ export function ProductDialog({ open, productId, onClose, onSaved }: ProductDial
                       <div className="space-y-2">
                         {productRecipes.map((item) => {
                           const recipe = availableRecipes?.find(r => r.id === item.recipe_id);
+                          // Use cost_per_unit instead of total_cost for the calculation
                           const recipeCost = (recipe?.cost_per_unit || 0) * item.quantity;
                           return (
                             <div 
@@ -789,7 +796,8 @@ export function ProductDialog({ open, productId, onClose, onSaved }: ProductDial
                       <span>
                         {formatCurrency(productRecipes.reduce((total, item) => {
                           const recipe = availableRecipes?.find(r => r.id === item.recipe_id);
-                          return total + ((recipe?.total_cost || 0) * item.quantity);
+                          // Use cost_per_unit instead of total_cost
+                          return total + ((recipe?.cost_per_unit || 0) * item.quantity);
                         }, 0))}
                       </span>
                     </div>
