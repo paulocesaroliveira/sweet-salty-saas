@@ -199,7 +199,7 @@ export function ProductList({ products, view, onEdit, onRefresh }: ProductListPr
                 {product.profit_margin.toFixed(0)}%
               </td>
               <td className="p-3 text-center">
-                <Badge variant={product.visible_in_store ? "success" : "secondary"}>
+                <Badge variant={product.visible_in_store ? "default" : "secondary"}>
                   {product.visible_in_store ? "Sim" : "Não"}
                 </Badge>
               </td>
