@@ -354,11 +354,11 @@ export function RecipeDialog({ recipeId, trigger, onSave }: RecipeDialogProps) {
 
       // Then, insert new recipe ingredients one by one to avoid potential issues
       if (savedRecipeId && recipeIngredients.length > 0) {
-        for (const item of recipeIngredients) {
+        const promises = recipeIngredients.map(item => {
           const ingredient = ingredients?.find(ing => ing.id === item.ingredient_id);
           const ingredientCost = (ingredient?.cost_per_unit || item.cost_per_unit || 0) * item.amount;
           
-          const { error: insertError } = await supabase
+          return supabase
             .from("recipe_ingredients")
             .insert({
               recipe_id: savedRecipeId,
@@ -366,8 +366,15 @@ export function RecipeDialog({ recipeId, trigger, onSave }: RecipeDialogProps) {
               amount: item.amount,
               ingredient_cost: ingredientCost
             });
-          
-          if (insertError) throw insertError;
+        });
+        
+        // Wait for all inserts to complete
+        const results = await Promise.all(promises);
+        
+        // Check for errors
+        const errors = results.filter(result => result.error);
+        if (errors.length > 0) {
+          throw errors[0].error;
         }
       }
 

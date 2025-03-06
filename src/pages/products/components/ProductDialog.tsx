@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { ChevronRight, Plus, Trash, ImageIcon, X } from "lucide-react";
@@ -71,31 +70,26 @@ export function ProductDialog({ open, productId, onClose, onSaved }: ProductDial
   const { user } = useAuth();
   const [isSubmitting, setIsSubmitting] = useState(false);
   
-  // Product basic information
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [category, setCategory] = useState("");
   const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [isVisibleInStore, setIsVisibleInStore] = useState(true);
   
-  // Recipes related state
   const [productRecipes, setProductRecipes] = useState<ProductRecipe[]>([]);
   const [selectedRecipeId, setSelectedRecipeId] = useState("");
   const [recipeQuantity, setRecipeQuantity] = useState(1);
   
-  // Packages related state
   const [productPackages, setProductPackages] = useState<ProductPackage[]>([]);
   const [selectedPackageId, setSelectedPackageId] = useState("");
   const [packageQuantity, setPackageQuantity] = useState(1);
   
-  // Pricing related state
   const [profitMargin, setProfitMargin] = useState(30);
   const [price, setPrice] = useState(0);
   const [totalCost, setTotalCost] = useState(0);
   const [isUserEditingPrice, setIsUserEditingPrice] = useState(false);
   const [isUserEditingMargin, setIsUserEditingMargin] = useState(false);
   
-  // Fetch product data if editing
   const { data: product, isLoading: isLoadingProduct } = useQuery({
     queryKey: ["product", productId],
     queryFn: async () => {
@@ -113,7 +107,6 @@ export function ProductDialog({ open, productId, onClose, onSaved }: ProductDial
     enabled: !!productId,
   });
   
-  // Fetch product recipes if editing
   const { data: existingProductRecipes, isLoading: isLoadingRecipes } = useQuery({
     queryKey: ["product-recipes", productId],
     queryFn: async () => {
@@ -149,7 +142,6 @@ export function ProductDialog({ open, productId, onClose, onSaved }: ProductDial
     enabled: !!productId,
   });
   
-  // Fetch product packages if editing
   const { data: existingProductPackages, isLoading: isLoadingPackages } = useQuery({
     queryKey: ["product-packages", productId],
     queryFn: async () => {
@@ -185,13 +177,12 @@ export function ProductDialog({ open, productId, onClose, onSaved }: ProductDial
     enabled: !!productId,
   });
   
-  // Fetch all available recipes
   const { data: availableRecipes, isLoading: isLoadingAvailableRecipes } = useQuery({
     queryKey: ["recipes-for-products"],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("recipes")
-        .select("id, name, total_cost, category")
+        .select("id, name, total_cost, cost_per_unit, category, servings")
         .order("name");
       
       if (error) throw error;
@@ -199,7 +190,6 @@ export function ProductDialog({ open, productId, onClose, onSaved }: ProductDial
     },
   });
   
-  // Fetch all available packages
   const { data: availablePackages, isLoading: isLoadingAvailablePackages } = useQuery({
     queryKey: ["packages-for-products"],
     queryFn: async () => {
@@ -213,7 +203,6 @@ export function ProductDialog({ open, productId, onClose, onSaved }: ProductDial
     },
   });
   
-  // Set product data when editing
   useEffect(() => {
     if (product) {
       setName(product.name || "");
@@ -228,26 +217,22 @@ export function ProductDialog({ open, productId, onClose, onSaved }: ProductDial
     }
   }, [product]);
   
-  // Set product recipes when editing
   useEffect(() => {
     if (existingProductRecipes) {
       setProductRecipes(existingProductRecipes);
     }
   }, [existingProductRecipes]);
   
-  // Set product packages when editing
   useEffect(() => {
     if (existingProductPackages) {
       setProductPackages(existingProductPackages);
     }
   }, [existingProductPackages]);
   
-  // Calculate total cost and suggested price whenever recipes or packages change
   useEffect(() => {
     calculateCosts();
   }, [productRecipes, productPackages]);
   
-  // Update price when profit margin changes (only if user is editing margin)
   useEffect(() => {
     if (isUserEditingMargin && !isUserEditingPrice) {
       const newPrice = totalCost + (totalCost * profitMargin / 100);
@@ -255,7 +240,6 @@ export function ProductDialog({ open, productId, onClose, onSaved }: ProductDial
     }
   }, [profitMargin, totalCost, isUserEditingMargin]);
   
-  // Update profit margin when price changes (only if user is editing price)
   useEffect(() => {
     if (isUserEditingPrice && !isUserEditingMargin && totalCost > 0) {
       const newMargin = ((price - totalCost) / totalCost) * 100;
@@ -281,16 +265,14 @@ export function ProductDialog({ open, productId, onClose, onSaved }: ProductDial
   };
   
   const calculateCosts = () => {
-    // Calculate recipes cost
     const recipesCost = productRecipes.reduce((total, item) => {
       const recipe = availableRecipes?.find(r => r.id === item.recipe_id);
       if (recipe) {
-        return total + (recipe.total_cost * item.quantity);
+        return total + (recipe.cost_per_unit * item.quantity);
       }
       return total;
     }, 0);
     
-    // Calculate packages cost
     const packagesCost = productPackages.reduce((total, item) => {
       const pkg = availablePackages?.find(p => p.id === item.package_id);
       if (pkg) {
@@ -299,11 +281,9 @@ export function ProductDialog({ open, productId, onClose, onSaved }: ProductDial
       return total;
     }, 0);
     
-    // Calculate total cost
     const newTotalCost = recipesCost + packagesCost;
     setTotalCost(newTotalCost);
     
-    // Only update price if the user is not currently editing it
     if (!isUserEditingPrice) {
       const suggestedPrice = newTotalCost + (newTotalCost * profitMargin / 100);
       setPrice(suggestedPrice);
@@ -382,14 +362,12 @@ export function ProductDialog({ open, productId, onClose, onSaved }: ProductDial
     setIsUserEditingMargin(true);
     setIsUserEditingPrice(false);
     setProfitMargin(parseFloat(e.target.value) || 0);
-    // Price will be updated by the useEffect
   };
   
   const handlePriceChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setIsUserEditingPrice(true);
     setIsUserEditingMargin(false);
     setPrice(parseFloat(e.target.value) || 0);
-    // Margin will be updated by the useEffect
   };
   
   const handleSubmit = async () => {
@@ -406,10 +384,8 @@ export function ProductDialog({ open, productId, onClose, onSaved }: ProductDial
     setIsSubmitting(true);
     
     try {
-      // Create or update product
       let productData;
       if (productId) {
-        // Update existing product
         const { data, error } = await supabase
           .from("products")
           .update({
@@ -430,7 +406,6 @@ export function ProductDialog({ open, productId, onClose, onSaved }: ProductDial
         if (error) throw error;
         productData = data;
         
-        // Delete existing product recipes
         const { error: deleteRecipesError } = await supabase
           .from("product_recipes")
           .delete()
@@ -438,7 +413,6 @@ export function ProductDialog({ open, productId, onClose, onSaved }: ProductDial
         
         if (deleteRecipesError) throw deleteRecipesError;
         
-        // Delete existing product packages
         const { error: deletePackagesError } = await supabase
           .from("product_packages")
           .delete()
@@ -446,7 +420,6 @@ export function ProductDialog({ open, productId, onClose, onSaved }: ProductDial
         
         if (deletePackagesError) throw deletePackagesError;
       } else {
-        // Create new product
         const { data, error } = await supabase
           .from("products")
           .insert({
@@ -467,34 +440,38 @@ export function ProductDialog({ open, productId, onClose, onSaved }: ProductDial
         productData = data;
       }
       
-      // Insert product recipes one by one to avoid batch errors
-      if (productRecipes.length > 0) {
-        for (const recipe of productRecipes) {
-          const { error: recipeError } = await supabase
-            .from("product_recipes")
-            .insert({
-              product_id: productData.id,
-              recipe_id: recipe.recipe_id,
-              quantity: recipe.quantity
-            });
-          
-          if (recipeError) throw recipeError;
-        }
+      const recipePromises = productRecipes.map(recipe => {
+        return supabase
+          .from("product_recipes")
+          .insert({
+            product_id: productData.id,
+            recipe_id: recipe.recipe_id,
+            quantity: recipe.quantity
+          });
+      });
+      
+      const packagePromises = productPackages.map(pkg => {
+        return supabase
+          .from("product_packages")
+          .insert({
+            product_id: productData.id,
+            package_id: pkg.package_id,
+            quantity: pkg.quantity
+          });
+      });
+      
+      const recipeResults = await Promise.all(recipePromises);
+      const packageResults = await Promise.all(packagePromises);
+      
+      const recipeErrors = recipeResults.filter(result => result.error);
+      const packageErrors = packageResults.filter(result => result.error);
+      
+      if (recipeErrors.length > 0) {
+        throw recipeErrors[0].error;
       }
       
-      // Insert product packages one by one to avoid batch errors
-      if (productPackages.length > 0) {
-        for (const pkg of productPackages) {
-          const { error: packageError } = await supabase
-            .from("product_packages")
-            .insert({
-              product_id: productData.id,
-              package_id: pkg.package_id,
-              quantity: pkg.quantity
-            });
-          
-          if (packageError) throw packageError;
-        }
+      if (packageErrors.length > 0) {
+        throw packageErrors[0].error;
       }
       
       toast.success(productId ? "Produto atualizado com sucesso" : "Produto criado com sucesso");
